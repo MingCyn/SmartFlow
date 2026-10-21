@@ -1,0 +1,62 @@
+@import 'tailwindcss';
+
+/* Layout variants keyed on <html data-layout>. One component tree, two shells. */
+@custom-variant mobile (&:where([data-layout='mobile'] *));
+@custom-variant browser (&:where([data-layout='browser'] *));
+
+@theme {
+  --font-sans: 'Inter Variable', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Deep civic blue. 700 on white is about 10:1, 600 on white about 8:1. */
+  --color-primary-50: #eef3fb;
+  --color-primary-100: #d6e2f5;
+  --color-primary-200: #adc4ea;
+  --color-primary-500: #2f63b8;
+  --color-primary-600: #1f4e9c;
+  --color-primary-700: #183f80;
+  --color-primary-800: #133266;
+  --color-primary-900: #0e2550;
+
+  /* SDP brand red: small accents only, never a background. */
+  --color-sdp: #e4002b;
+}
+
+html {
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-slate-100 font-sans text-base leading-relaxed text-slate-900 antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-primary-600);
+  outline-offset: 2px;
+}
+
+/* Reduced motion: the in-app switch and the OS setting both apply. */
+[data-motion='reduced'] *,
+[data-motion='reduced'] *::before,
+[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Leaflet sits below the app header and bottom tabs. */
+.leaflet-container {
+  font: inherit;
+  z-index: 0;
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" data-layout="mobile">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#183f80" />
+    <meta name="description" content="SmartFlow: flood reports, advice and operator dashboard (prototype on simulated data)." />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <title>SmartFlow</title>
+    <script>
+      // Apply saved shell settings before first paint so the layout does not flash.
+      (function () {
+        var html = document.documentElement
+        var s = {}
+        try { s = (JSON.parse(localStorage.getItem('smartflow-settings') || '{}').state) || {} } catch (e) {}
+        html.dataset.layout = s.layout || (location.pathname.indexOf('/ops') === 0 ? 'browser' : 'mobile')
+        html.lang = s.lang === 'ms' ? 'ms' : 'en'
+        if (s.reducedMotion) html.dataset.motion = 'reduced'
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

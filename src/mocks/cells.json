@@ -1,0 +1,230 @@
+[
+  {
+    "id": "A1",
+    "name": "Zone A1",
+    "bounds": [
+      [
+        3.052,
+        101.43
+      ],
+      [
+        3.064,
+        101.442
+      ]
+    ],
+    "center": [
+      3.058,
+      101.436
+    ],
+    "population": 4200,
+    "drainCapacityCm": 150,
+    "sensitivity": 0.6,
+    "readingIntervalMin": 10,
+    "rainfallMmH": [
+      12,
+      14,
+      15,
+      17,
+      18,
+      20
+    ],
+    "drainLevelCm": [
+      40,
+      42,
+      44,
+      46,
+      47,
+      49
+    ]
+  },
+  {
+    "id": "A2",
+    "name": "Zone A2",
+    "bounds": [
+      [
+        3.052,
+        101.442
+      ],
+      [
+        3.064,
+        101.454
+      ]
+    ],
+    "center": [
+      3.058,
+      101.448
+    ],
+    "population": 9800,
+    "drainCapacityCm": 150,
+    "sensitivity": 0.5,
+    "readingIntervalMin": 10,
+    "rainfallMmH": [
+      18,
+      22,
+      26,
+      30,
+      33,
+      36
+    ],
+    "drainLevelCm": [
+      70,
+      76,
+      82,
+      88,
+      93,
+      98
+    ]
+  },
+  {
+    "id": "A3",
+    "name": "Zone A3",
+    "bounds": [
+      [
+        3.052,
+        101.454
+      ],
+      [
+        3.064,
+        101.466
+      ]
+    ],
+    "center": [
+      3.058,
+      101.46
+    ],
+    "population": 3100,
+    "drainCapacityCm": 150,
+    "sensitivity": 0.4,
+    "readingIntervalMin": 10,
+    "rainfallMmH": [
+      8,
+      9,
+      9,
+      10,
+      10,
+      11
+    ],
+    "drainLevelCm": [
+      30,
+      30,
+      31,
+      31,
+      32,
+      32
+    ]
+  },
+  {
+    "id": "B1",
+    "name": "Zone B1",
+    "bounds": [
+      [
+        3.04,
+        101.43
+      ],
+      [
+        3.052,
+        101.442
+      ]
+    ],
+    "center": [
+      3.046,
+      101.436
+    ],
+    "population": 6400,
+    "drainCapacityCm": 100,
+    "sensitivity": 2.4,
+    "readingIntervalMin": 10,
+    "rainfallMmH": [
+      18,
+      22,
+      26,
+      30,
+      34,
+      38
+    ],
+    "drainLevelCm": [
+      36,
+      38,
+      40,
+      42,
+      44,
+      46
+    ]
+  },
+  {
+    "id": "B2",
+    "name": "Zone B2",
+    "bounds": [
+      [
+        3.04,
+        101.442
+      ],
+      [
+        3.052,
+        101.454
+      ]
+    ],
+    "center": [
+      3.046,
+      101.448
+    ],
+    "population": 11200,
+    "drainCapacityCm": 150,
+    "sensitivity": 1,
+    "readingIntervalMin": 10,
+    "rainfallMmH": [
+      25,
+      30,
+      34,
+      38,
+      41,
+      44
+    ],
+    "drainLevelCm": [
+      85,
+      92,
+      99,
+      106,
+      112,
+      118
+    ]
+  },
+  {
+    "id": "B3",
+    "name": "Zone B3",
+    "bounds": [
+      [
+        3.04,
+        101.454
+      ],
+      [
+        3.052,
+        101.466
+      ]
+    ],
+    "center": [
+      3.046,
+      101.46
+    ],
+    "population": 5600,
+    "drainCapacityCm": 150,
+    "sensitivity": 0.8,
+    "readingIntervalMin": 10,
+    "rainfallMmH": [
+      15,
+      18,
+      20,
+      23,
+      25,
+      27
+    ],
+    "drainLevelCm": [
+      55,
+      58,
+      62,
+      66,
+      69,
+      72
+    ]
+  }
+]

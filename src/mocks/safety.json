@@ -1,0 +1,66 @@
+{
+  "roadClosures": [
+    {
+      "id": "RD-1",
+      "name": "Riverside Road underpass",
+      "cellId": "B2",
+      "severity": "closed",
+      "reason": { "en": "Water above the kerb. Closed to all vehicles.", "ms": "Air melebihi bahu jalan. Ditutup kepada semua kenderaan." }
+    },
+    {
+      "id": "RD-2",
+      "name": "School Lane",
+      "cellId": "B2",
+      "severity": "closed",
+      "reason": { "en": "Closed by township operations.", "ms": "Ditutup oleh pasukan operasi bandar." }
+    },
+    {
+      "id": "RD-3",
+      "name": "Lake View Avenue, east section",
+      "cellId": "A2",
+      "severity": "avoid",
+      "reason": { "en": "Standing water reported. Avoid if you can.", "ms": "Air bertakung dilaporkan. Elakkan jika boleh." }
+    },
+    {
+      "id": "RD-4",
+      "name": "Park Link Road",
+      "cellId": "B3",
+      "severity": "avoid",
+      "reason": { "en": "Drain overflow reported.", "ms": "Longkang melimpah dilaporkan." }
+    }
+  ],
+  "safePoints": [
+    {
+      "id": "SP-1",
+      "name": { "en": "Community Hall 1", "ms": "Dewan Komuniti 1" },
+      "cellId": "A1",
+      "lat": 3.0596,
+      "lng": 101.4372,
+      "note": { "en": "Raised ground. Seating, toilets, first aid, phone charging.", "ms": "Kawasan tinggi. Tempat duduk, tandas, pertolongan cemas, cas telefon." }
+    },
+    {
+      "id": "SP-2",
+      "name": { "en": "Township Sports Centre", "ms": "Pusat Sukan Bandar" },
+      "cellId": "A3",
+      "lat": 3.0581,
+      "lng": 101.4611,
+      "note": { "en": "Large hall. Drinking water and first aid.", "ms": "Dewan besar. Air minuman dan pertolongan cemas." }
+    }
+  ],
+  "contacts": [
+    { "id": "999", "name": { "en": "Emergency: Police, Ambulance, Bomba", "ms": "Kecemasan: Polis, Ambulans, Bomba" }, "phone": "999" },
+    { "id": "bomba", "name": { "en": "Bomba (Fire and Rescue Department)", "ms": "Bomba (Jabatan Bomba dan Penyelamat)" }, "phone": "994" },
+    { "id": "nadma", "name": { "en": "NADMA (National Disaster Management Agency)", "ms": "NADMA (Agensi Pengurusan Bencana Negara)" }, "url": "https://www.nadma.gov.my" },
+    { "id": "jps", "name": { "en": "JPS flood information (Public Infobanjir)", "ms": "Maklumat banjir JPS (Public Infobanjir)" }, "url": "https://publicinfobanjir.water.gov.my" }
+  ],
+  "checklist": [
+    { "id": "docs", "en": "IC and important documents in a waterproof bag", "ms": "Kad pengenalan dan dokumen penting dalam beg kalis air" },
+    { "id": "phone", "en": "Phone, charger and power bank", "ms": "Telefon, pengecas dan power bank" },
+    { "id": "meds", "en": "Medicines for at least 3 days", "ms": "Ubat untuk sekurang-kurangnya 3 hari" },
+    { "id": "water", "en": "Drinking water and simple food", "ms": "Air minuman dan makanan ringkas" },
+    { "id": "torch", "en": "Torch and spare batteries", "ms": "Lampu suluh dan bateri ganti" },
+    { "id": "clothes", "en": "A change of clothes", "ms": "Pakaian ganti" },
+    { "id": "care", "en": "Items for babies, older family members or pets", "ms": "Barang keperluan bayi, warga emas atau haiwan peliharaan" },
+    { "id": "cash", "en": "Some cash", "ms": "Sedikit wang tunai" }
+  ]
+}
