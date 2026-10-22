@@ -18,3 +18,11 @@ export function useT() {
   const lang = useSettings((s) => s.lang)
   return useCallback((key: TKey, vars?: Record<string, string | number>) => translate(lang, key, vars), [lang])
 }
+
+// Add these to your cell/zone interface if not already present
+export interface WaterSupplyStatus {
+  tankLevelPct: number;          // e.g., 75 (%)
+  supplyStatus: 'normal' | 'buffer-active' | 'interrupted';
+  backupHoursRemaining: number;  // e.g., 18.5 hours
+  treatmentPlantStatus: 'operational' | 'silt-shutdown' | 'maintenance';
+}

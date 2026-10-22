@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
+import WaterOutagePage from './pages/WaterOutagePage'
 import ReportPage from './pages/ReportPage'
 import AdvicePage from './pages/AdvicePage'
 import StatusPage from './pages/StatusPage'
@@ -12,6 +13,7 @@ export default function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<Navigate to="/report" replace />} />
+        <Route path="/outage" element={<WaterOutagePage />} />
         <Route path="report" element={<ReportPage />} />
         <Route path="advice" element={<AdvicePage />} />
         <Route path="status" element={<StatusPage />} />

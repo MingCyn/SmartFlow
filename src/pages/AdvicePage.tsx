@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { ExternalLink, MapPin, Phone, Sparkles } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { AdviceCard, LifeCriticalList } from '../components/AdviceCard'
@@ -70,6 +70,25 @@ export default function AdvicePage() {
           </label>
         }
       />
+
+      {/* --- ADD THE NAVIGATION LINK HERE --- */}
+      <div className="mb-5 flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+        <div>
+          <p className="font-semibold text-blue-950">
+            {lang === 'ms' ? 'Mencari status simpanan & gangguan air?' : 'Looking for water storage & outage data?'}
+          </p>
+          <p className="text-sm text-blue-900">
+            {lang === 'ms' ? 'Pantau tangki komuniti dan jadual takungan.' : 'Monitor community tanks and backup schedules.'}
+          </p>
+        </div>
+        <Link 
+          to="/outage" 
+          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white shadow-sm hover:bg-blue-700"
+        >
+          {lang === 'ms' ? 'Status Air' : 'Water Supply Status'}
+        </Link>
+      </div>
+      {/* ------------------------------------ */}
 
       <AdviceCard labelledBy="adv-stay">
         <div className="space-y-8">
@@ -200,6 +219,8 @@ export default function AdvicePage() {
               </section>
             </div>
           )}
+          
+
 
           {/* Mock AI tips: rendered separately from, and after, the fixed safety lines. */}
           <section aria-labelledby="adv-tips" className="rounded-xl bg-slate-50 p-4">
