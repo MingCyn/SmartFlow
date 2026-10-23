@@ -19,6 +19,7 @@ export function CameraCapture({ onCapture, onClose }: Props) {
   const captureRef = useRef<HTMLButtonElement>(null)
   const [state, setState] = useState<CamState>('starting')
   const [facing, setFacing] = useState<'environment' | 'user'>('environment')
+  const [flash, setFlash] = useState(0)
 
   useEffect(() => {
     let stream: MediaStream | null = null
@@ -53,6 +54,8 @@ export function CameraCapture({ onCapture, onClose }: Props) {
   function capture() {
     const v = videoRef.current
     if (!v || !v.videoWidth) return
+    setFlash((f) => f + 1)
+    navigator.vibrate?.(12)
     const canvas = document.createElement('canvas')
     canvas.width = v.videoWidth
     canvas.height = v.videoHeight
@@ -61,7 +64,7 @@ export function CameraCapture({ onCapture, onClose }: Props) {
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={t('camera.title')} className="fixed inset-0 z-[2000] flex flex-col bg-black text-white">
+    <div role="dialog" aria-modal="true" aria-label={t('camera.title')} className="fixed inset-0 z-[2000] flex animate-fade flex-col bg-black text-white">
       <div className="flex items-center justify-between p-3">
         <p className="font-semibold">{t('camera.title')}</p>
         <button type="button" onClick={onClose} aria-label={t('camera.close')} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-white/15">
@@ -70,7 +73,9 @@ export function CameraCapture({ onCapture, onClose }: Props) {
       </div>
 
       <div className="relative flex flex-1 items-center justify-center overflow-hidden">
-        <video ref={videoRef} playsInline muted className={`max-h-full max-w-full ${facing === 'user' ? '-scale-x-100' : ''} ${state === 'live' ? '' : 'invisible'}`} />
+        {/* Shutter flash confirms the capture. */}
+        {flash > 0 && <div key={flash} aria-hidden className="pointer-events-none absolute inset-0 z-10 animate-[shutter_260ms_var(--ease-out-quart)_both] bg-white" />}
+        <video ref={videoRef} playsInline muted className={`max-h-full max-w-full transition-opacity duration-300 ${facing === 'user' ? '-scale-x-100' : ''} ${state === 'live' ? 'opacity-100' : 'opacity-0'}`} />
         {state === 'starting' && (
           <p className="absolute flex items-center gap-2">
             <LoaderCircle aria-hidden className="size-5 animate-spin" />
@@ -92,7 +97,7 @@ export function CameraCapture({ onCapture, onClose }: Props) {
           onClick={capture}
           disabled={state !== 'live'}
           aria-label={t('camera.capture')}
-          className="inline-flex size-20 items-center justify-center rounded-full border-4 border-white bg-white/20 hover:bg-white/30 disabled:opacity-40"
+          className="inline-flex size-20 items-center justify-center rounded-full border-4 border-white bg-white/20 transition-[transform,background-color] duration-150 hover:bg-white/30 active:scale-90 disabled:opacity-40"
         >
           <Camera aria-hidden className="size-8" />
         </button>

@@ -19,10 +19,84 @@
 
   /* SDP brand red: small accents only, never a background. */
   --color-sdp: #e4002b;
+
+  /* Motion. Product register: short, decelerating, never bouncy. */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-rise: rise 320ms var(--ease-out-quint) both;
+  --animate-pop: pop 220ms var(--ease-out-quint) both;
+  --animate-fade: fade 200ms var(--ease-out-quart) both;
+  --animate-shake: shake 360ms var(--ease-out-quart) both;
+  --animate-draw: draw 420ms var(--ease-out-quint) 120ms both;
+  --animate-halo: halo 1.8s var(--ease-out-quart) infinite;
+  --animate-scan: scan 1.4s var(--ease-out-quart) infinite;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+}
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.94); }
+}
+@keyframes fade {
+  from { opacity: 0; }
+}
+@keyframes shake {
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+/* SVG paths with pathLength="1" draw themselves. */
+@keyframes draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes halo {
+  from { opacity: 0.7; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.45); }
+}
+@keyframes shutter {
+  from { opacity: 0.85; }
+  to { opacity: 0; }
+}
+@keyframes water-rise {
+  from { transform: scaleY(0); }
+}
+@keyframes scan {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(100%); }
+}
+
+/* Short stagger for lists that arrive together. Cap the index in markup. */
+.stagger > * {
+  animation: var(--animate-rise);
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+/* Route changes: content slides up a touch while the shell (header, tabs) stays put. */
+::view-transition-old(root) {
+  animation: 140ms var(--ease-out-quart) both vt-out;
+}
+::view-transition-new(root) {
+  animation: 260ms var(--ease-out-quint) both vt-in;
+}
+::view-transition-group(app-header),
+::view-transition-group(app-tabs) {
+  animation: none;
+}
+@keyframes vt-out {
+  to { opacity: 0; }
+}
+@keyframes vt-in {
+  from { opacity: 0; transform: translateY(8px); }
 }
 
 html {
-  font-size: 100%;
+  /* 17px base: residents include older readers, often outdoors. */
+  font-size: 106.25%;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -38,7 +112,9 @@ body {
 /* Reduced motion: the in-app switch and the OS setting both apply. */
 [data-motion='reduced'] *,
 [data-motion='reduced'] *::before,
-[data-motion='reduced'] *::after {
+[data-motion='reduced'] *::after,
+[data-motion='reduced']::view-transition-old(root),
+[data-motion='reduced']::view-transition-new(root) {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
@@ -47,11 +123,34 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after {
+  *::after,
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Rain on the sky hero. Transform-only animation (cheap on battery); frozen by reduced motion. */
+.sky-rain {
+  position: absolute;
+  inset: -96px 0 0;
+  z-index: -1;
+  pointer-events: none;
+  /* One 48x96 tile of slanted streaks; moving exactly one tile height loops seamlessly. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='96'%3E%3Cg stroke='%23f4f8ff' stroke-opacity='.32' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M10 6l-4 18M34 40l-4 18M20 70l-4 18'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 48px 96px;
+  animation: sky-rain 0.7s linear infinite;
+}
+.sky-rain--light {
+  opacity: 0.5;
+  animation-duration: 1.3s;
+}
+@keyframes sky-rain {
+  to {
+    transform: translate3d(0, 96px, 0);
   }
 }
 

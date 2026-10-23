@@ -11,9 +11,27 @@ interface LocationState {
   position: LatLng | null
   accuracyM: number | null
   updatedAt: number | null
+  /** Browser permission for this site. 'unknown' where the Permissions API is missing (older Safari). */
+  permission: PermissionState | 'unknown'
 }
 
-export const useGeo = create<LocationState>(() => ({ status: 'idle', position: null, accuracyM: null, updatedAt: null }))
+export const useGeo = create<LocationState>(() => ({ status: 'idle', position: null, accuracyM: null, updatedAt: null, permission: 'unknown' }))
+
+// Track the site permission live, so the UI updates when the user flips it in browser settings.
+if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+  navigator.permissions
+    .query({ name: 'geolocation' })
+    .then((p) => {
+      const sync = () => {
+        useGeo.setState({ permission: p.state })
+        // Unblocked in settings while the app is open: pick the watch back up.
+        if (p.state === 'granted' && users > 0 && useGeo.getState().status !== 'ok') retryLocation()
+      }
+      sync()
+      p.addEventListener('change', sync)
+    })
+    .catch(() => {})
+}
 
 let watchId: number | null = null
 let users = 0

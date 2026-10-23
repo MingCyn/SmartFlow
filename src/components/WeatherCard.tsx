@@ -1,12 +1,9 @@
-import { useEffect, useState } from 'react'
 import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudRainWind, LoaderCircle, Sun, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { useT } from '../i18n'
-import { TOWNSHIP_CENTER } from '../services/cells'
-import { getWeather, HEAVY_RAIN_3H_MM, weatherKind, weatherLabel, type Weather } from '../services/weather'
-import { useLiveLocation } from '../store/location'
+import { HEAVY_RAIN_3H_MM, weatherKind, weatherLabel } from '../services/weather'
+import { useWeather } from '../store/weather'
 import { useSettings } from '../store/settings'
 
-const REFRESH_MS = 10 * 60_000
 const ICONS: Record<ReturnType<typeof weatherKind>, LucideIcon> = {
   clear: Sun,
   cloudy: Cloud,
@@ -20,31 +17,7 @@ const ICONS: Record<ReturnType<typeof weatherKind>, LucideIcon> = {
 export function WeatherCard({ className = '' }: { className?: string }) {
   const t = useT()
   const lang = useSettings((s) => s.lang)
-  const geo = useLiveLocation()
-  const [weather, setWeather] = useState<Weather | null>(null)
-  const [error, setError] = useState(false)
-
-  // Round so small GPS jitter does not refetch.
-  const here = geo.position ? ([Math.round(geo.position[0] * 50) / 50, Math.round(geo.position[1] * 50) / 50] as [number, number]) : null
-  const point = here ?? TOWNSHIP_CENTER
-  const key = point.join(',')
-
-  useEffect(() => {
-    const ctrl = new AbortController()
-    const load = () =>
-      getWeather(point, ctrl.signal)
-        .then((w) => {
-          setWeather(w)
-          setError(false)
-        })
-        .catch((e) => e.name !== 'AbortError' && setError(true))
-    load()
-    const id = window.setInterval(load, REFRESH_MS)
-    return () => {
-      ctrl.abort()
-      window.clearInterval(id)
-    }
-  }, [key])
+  const { weather, local: here, error } = useWeather()
 
   const time = (iso: string | number) => new Date(iso).toLocaleTimeString(lang === 'ms' ? 'ms-MY' : 'en-MY', { hour: 'numeric', minute: '2-digit' })
   const Icon = weather ? ICONS[weatherKind(weather.code)] : Cloud

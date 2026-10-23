@@ -67,6 +67,9 @@ export default function ChatPage() {
   const nonce = useRef(0)
   const idleTimer = useRef<number>(0)
   const endRef = useRef<HTMLDivElement>(null)
+  // Only messages sent after the page opened animate in; restored history just appears.
+  const openedAt = useRef(Date.now())
+  const enter = (id: number) => (id > openedAt.current ? 'animate-rise' : '')
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const doPlay = (id: AnimId) => setPlay({ id, nonce: ++nonce.current })
@@ -189,7 +192,7 @@ export default function ChatPage() {
 
       {started ? (
         // Compact mascot bar stays at the top while chatting.
-        <div className="sticky top-14 z-10 -mx-4 -mt-5 flex items-center gap-3 border-b border-slate-200 bg-slate-50/95 px-4 py-2 backdrop-blur browser:-mt-6 browser:mx-0 browser:px-0">
+        <div className="sticky top-16 z-10 -mx-4 -mt-5 browser:top-[4.25rem] flex items-center gap-3 border-b border-slate-200 bg-slate-50/95 px-4 py-2 backdrop-blur browser:-mt-6 browser:mx-0 browser:px-0">
           {mascot(layout === 'browser' ? 72 : 60)}
           <div className="min-w-0 flex-1">
             <p className="font-bold text-primary-900">{t('chat.bot')}</p>
@@ -241,14 +244,14 @@ export default function ChatPage() {
         <div role="log" aria-live="polite" aria-label={t('chat.log')} className="flex-1 space-y-6 pb-4 pt-6">
           {messages.map((m) =>
             m.from === 'user' ? (
-              <div key={m.id} className="flex justify-end">
+              <div key={m.id} className={`flex justify-end ${enter(m.id)}`}>
                 <p className="max-w-[80%] whitespace-pre-wrap rounded-3xl bg-slate-200 px-4 py-2.5 text-slate-900">
                   <span className="sr-only">{t('chat.you')}: </span>
                   {m.text}
                 </p>
               </div>
             ) : (
-              <article key={m.id} className="group text-slate-900">
+              <article key={m.id} className={`group text-slate-900 ${enter(m.id)}`}>
                 <span className="sr-only">{t('chat.bot')}: </span>
                 <p className="leading-relaxed">{m.text}</p>
                 {m.critical && (
@@ -291,7 +294,7 @@ export default function ChatPage() {
             ),
           )}
           {busy && (
-            <p className="flex items-center gap-1.5 text-slate-700" aria-hidden>
+            <p className="flex animate-fade items-center gap-1.5 text-slate-700" aria-hidden>
               {[0, 1, 2].map((i) => (
                 <span
                   key={i}
@@ -307,7 +310,7 @@ export default function ChatPage() {
       )}
 
       {/* Composer, pinned above the tab bar. */}
-      <div className="sticky bottom-16 z-10 -mx-4 bg-gradient-to-t from-slate-50 from-85% to-transparent px-4 pb-10 pt-4 browser:bottom-0 browser:mx-0 browser:px-0 browser:pb-3">
+      <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-10 -mx-4 bg-gradient-to-t from-slate-50 from-85% to-transparent px-4 pb-10 pt-4 browser:bottom-0 browser:mx-0 browser:px-0 browser:pb-3">
         {started && (
           // Urgent help stays one tap away during a conversation.
           <button

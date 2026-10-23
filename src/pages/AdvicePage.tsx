@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { ExternalLink, MapPin, Phone, Sparkles } from 'lucide-react'
+import { Check, ChevronRight, Droplets, ExternalLink, MapPin, Phone, Sparkles } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
-import { WeatherCard } from '../components/WeatherCard'
+import { SkyHero } from '../components/SkyHero'
 import { AdviceCard, LifeCriticalList } from '../components/AdviceCard'
 import { useT } from '../i18n'
 import { distanceKm } from '../lib/geo'
@@ -51,6 +51,7 @@ export default function AdvicePage() {
 
   return (
     <div className="mx-auto max-w-3xl">
+      <SkyHero />
       <PageHeader
         title={t('advice.title')}
         subtitle={t('advice.subtitle')}
@@ -72,25 +73,23 @@ export default function AdvicePage() {
         }
       />
 
-      {/* --- ADD THE NAVIGATION LINK HERE --- */}
-      <div className="mb-5 flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
-        <div>
-          <p className="font-semibold text-blue-950">
-            {lang === 'ms' ? 'Mencari status simpanan & gangguan air?' : 'Looking for water storage & outage data?'}
-          </p>
-          <p className="text-sm text-blue-900">
-            {lang === 'ms' ? 'Pantau tangki komuniti dan jadual takungan.' : 'Monitor community tanks and backup schedules.'}
-          </p>
-        </div>
-        <Link 
-          to="/outage" 
-          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white shadow-sm hover:bg-blue-700"
-        >
-          {lang === 'ms' ? 'Status Air' : 'Water Supply Status'}
-        </Link>
-      </div>
-      {/* ------------------------------------ */}
-      <WeatherCard className="mb-5" />
+      {/* Water supply lives on its own page; one tappable row gets there. */}
+      <Link
+        to="/outage"
+        viewTransition
+        className="group mb-5 flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-[background-color,transform] duration-150 hover:bg-slate-50 active:scale-[0.99]"
+      >
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-800">
+          <Droplets aria-hidden className="size-6" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold text-slate-900">{lang === 'ms' ? 'Status bekalan air' : 'Water supply status'}</span>
+          <span className="block text-[0.95rem] text-slate-700">
+            {lang === 'ms' ? 'Tangki komuniti dan jadual bekalan simpanan.' : 'Community tanks and backup supply schedules.'}
+          </span>
+        </span>
+        <ChevronRight aria-hidden className="size-5 shrink-0 text-slate-500 transition-transform duration-200 ease-(--ease-out-quart) group-hover:translate-x-0.5" />
+      </Link>
 
       <AdviceCard labelledBy="adv-stay">
         <div className="space-y-8">
@@ -108,21 +107,43 @@ export default function AdvicePage() {
                 <p className="text-slate-700" aria-live="polite">
                   {t('advice.bringProgress', { done: packed.length, total: safety.data.checklist.length })}
                 </p>
-                <ul className="mt-2 space-y-1">
-                  {safety.data.checklist.map((item) => (
-                    <li key={item.id}>
-                      <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg p-2 hover:bg-slate-50">
-                        <input
-                          type="checkbox"
-                          checked={packed.includes(item.id)}
-                          onChange={() => toggle(item.id)}
-                          className="mt-1 size-5 shrink-0 accent-primary-700"
-                        />
-                        <span className={packed.includes(item.id) ? 'text-slate-600 line-through' : ''}>{item[lang]}</span>
-                      </label>
-                    </li>
-                  ))}
+                <div aria-hidden className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full origin-left rounded-full bg-primary-600 transition-transform duration-500 ease-(--ease-out-quint)"
+                    style={{ transform: `scaleX(${packed.length / safety.data.checklist.length})` }}
+                  />
+                </div>
+                <ul className="mt-2 space-y-0.5">
+                  {safety.data.checklist.map((item) => {
+                    const on = packed.includes(item.id)
+                    return (
+                      <li key={item.id}>
+                        <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-xl p-2 transition-colors duration-150 hover:bg-slate-50 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-primary-600">
+                          <span className="relative mt-0.5 flex size-6 shrink-0 items-center justify-center">
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={() => toggle(item.id)}
+                              className="peer size-6 cursor-pointer appearance-none rounded-md border-2 border-slate-400 bg-white transition-[background-color,border-color,transform] duration-150 checked:border-primary-700 checked:bg-primary-700 active:scale-90 focus:outline-none"
+                            />
+                            {on && (
+                              <svg aria-hidden viewBox="0 0 24 24" className="pointer-events-none absolute size-4 text-white" fill="none" stroke="currentColor" strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M5 12.5l4.5 4.5L19 7.5" pathLength={1} strokeDasharray={1} className="animate-draw [animation-delay:0ms]" />
+                              </svg>
+                            )}
+                          </span>
+                          <span className={`transition-colors duration-200 ${on ? 'text-slate-500 line-through decoration-slate-400' : 'text-slate-900'}`}>{item[lang]}</span>
+                        </label>
+                      </li>
+                    )
+                  })}
                 </ul>
+                {packed.length === safety.data.checklist.length && (
+                  <p className="mt-2 flex animate-rise items-center gap-2 font-semibold text-primary-800">
+                    <Check aria-hidden className="size-5" strokeWidth={3} />
+                    {t('advice.packed')}
+                  </p>
+                )}
               </section>
 
               {/* Roads to avoid */}

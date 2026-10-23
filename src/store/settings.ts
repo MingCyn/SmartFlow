@@ -9,6 +9,9 @@ interface SettingsState {
   layout: Layout | null
   lang: Lang
   reducedMotion: boolean
+  /** Optional first name for the greeting. Device only. */
+  name: string
+  setName: (name: string) => void
   setLayout: (layout: Layout | null) => void
   setLang: (lang: Lang) => void
   setReducedMotion: (on: boolean) => void
@@ -21,6 +24,8 @@ export const useSettings = create<SettingsState>()(
       layout: null,
       lang: 'en',
       reducedMotion: false,
+      name: '',
+      setName: (name) => set({ name: name.slice(0, 40) }),
       setLayout: (layout) => set({ layout }),
       setLang: (lang) => set({ lang }),
       setReducedMotion: (reducedMotion) => set({ reducedMotion }),
