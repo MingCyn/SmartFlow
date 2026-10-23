@@ -1,16 +1,21 @@
-// Mock chatbot. Keyword intents over the mock data; no external API.
-// Safety-critical replies never contain generated text: they set `critical`
-// and the UI renders the frozen lines from src/constants/lifeCritical.ts.
+// Chatbot. Free text is answered by the LLM via /api/chat (Groq, key held server-side),
+// grounded in the app's safety data, reports and live weather. Keyword intents still
+// pick the mascot mood and quick links, and are the offline fallback.
+// Safety-critical replies never contain generated text: danger is caught locally first,
+// sets `critical`, and the UI renders the frozen lines from src/constants/lifeCritical.ts.
 import { translate, type TKey } from '../i18n'
 import { STATUS_META } from '../lib/status'
 import type { Lang } from '../store/settings'
 import { respond } from './client'
 import { getMyReports } from './reports'
 import { getSafety } from './safety'
+import { getWeather, weatherLabel } from './weather'
+import { TOWNSHIP_CENTER } from './cells'
+import { useGeo } from '../store/location'
 
 export type Intent =
   | 'greeting' | 'danger' | 'report' | 'status' | 'roads' | 'safe'
-  | 'bring' | 'contacts' | 'depth' | 'thanks' | 'fallback'
+  | 'bring' | 'contacts' | 'depth' | 'thanks' | 'fallback' | 'answer'
 
 export interface BotReply {
   intent: Intent
@@ -40,7 +45,64 @@ export function detectIntent(text: string): Intent {
   return INTENTS.find(([, re]) => re.test(text))?.[0] ?? 'fallback'
 }
 
-export async function askBot(message: string, lang: Lang): Promise<BotReply> {
+export interface ChatTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+/** Facts the LLM may use. It is told never to state anything outside this. */
+async function buildContext(lang: Lang): Promise<string> {
+  const tr = (k: TKey, v?: Record<string, string | number>) => translate(lang, k, v)
+  const [safety, reports, weather] = await Promise.all([
+    getSafety(),
+    getMyReports(),
+    getWeather(useGeo.getState().position ?? TOWNSHIP_CENTER, AbortSignal.timeout(4000)).catch(() => null),
+  ])
+  const lines = [
+    'Roads: ' + safety.roadClosures.map((r) => `${r.name} (${r.severity}, zone ${r.cellId}): ${r.reason[lang]}`).join('; '),
+    'Safe points: ' + safety.safePoints.map((p) => `${p.name[lang]} (zone ${p.cellId}): ${p.note[lang]}`).join('; '),
+    'Official contacts: ' + safety.contacts.map((c) => `${c.name[lang]}: ${c.phone ?? c.url}`).join('; '),
+    'Go-bag checklist: ' + safety.checklist.map((c) => c[lang]).join(', '),
+    'Depth options when reporting: ankle (about 10 cm), knee (about 50 cm), car door (about 90 cm).',
+    reports.length
+      ? "User's reports: " + reports.slice(0, 3).map((r) => `${r.id} in zone ${r.cellId}, ${r.depth}, status ${tr(STATUS_META[r.status].label)}, sent ${r.createdAt}`).join('; ')
+      : 'User has not sent any reports.',
+  ]
+  if (weather)
+    lines.push(
+      `Live weather (${useGeo.getState().position ? "user's location" : 'township'}): ${weatherLabel(weather.code, lang)}, ${Math.round(weather.tempC)} C, rain now ${weather.precipMm} mm, next 3 hours ${weather.next3hMm} mm, hourly rain chance ${weather.next.map((h) => h.chancePct + '%').join(' ')}.`,
+    )
+  return lines.join('\n')
+}
+
+async function askLlm(history: ChatTurn[], lang: Lang): Promise<string> {
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lang, history, context: await buildContext(lang) }),
+    signal: AbortSignal.timeout(25_000),
+  })
+  if (!res.ok) throw new Error(`chat ${res.status}`)
+  const { text } = (await res.json()) as { text: string }
+  if (!text) throw new Error('empty reply')
+  return text
+}
+
+/** history: earlier turns, oldest first, not including `message`. */
+export async function askBot(message: string, lang: Lang, history: ChatTurn[] = []): Promise<BotReply> {
+  const local = await keywordReply(message, lang)
+  // Danger never goes to the model: the frozen safety lines are the whole answer.
+  if (local.critical) return local
+  try {
+    const text = await askLlm([...history, { role: 'user', content: message }], lang)
+    // Prose replaces the canned text and lists; keep the quick links.
+    return { intent: local.intent === 'fallback' ? 'answer' : local.intent, text, links: local.links }
+  } catch {
+    return local
+  }
+}
+
+async function keywordReply(message: string, lang: Lang): Promise<BotReply> {
   const tr = (k: TKey, v?: Record<string, string | number>) => translate(lang, k, v)
   const intent = detectIntent(message)
   const adviceLink = { to: '/advice', label: tr('nav.advice') }
@@ -101,5 +163,5 @@ export async function askBot(message: string, lang: Lang): Promise<BotReply> {
     default:
       reply = { intent: 'fallback', text: tr('bot.fallback') }
   }
-  return respond(reply, 700)
+  return respond(reply, 0)
 }

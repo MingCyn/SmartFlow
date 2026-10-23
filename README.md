@@ -9,7 +9,9 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. No other setup is needed. To try the installable PWA (manifest and service worker), run `npm run build && npm run preview`.
+Copy `.env.example` to `.env` and set `GROQ_API_KEY` (chatbot and photo depth AI). Open http://localhost:5173. Without a key the chat falls back to keyword answers and photo depth must be picked by hand.
+
+The live camera and GPS need a secure origin: `localhost` works, and so does HTTPS. On a phone over plain `http://<LAN IP>`, the camera button falls back to the phone's own camera app. To try the installable PWA (manifest and service worker), run `npm run build && npm run preview`.
 
 ## Demo flow (5 steps)
 
@@ -25,13 +27,15 @@ Open http://localhost:5173. No other setup is needed. To try the installable PWA
 | --- | --- |
 | `src/mocks/*.json` | Simulated data: 40 reports in 3 zones over 60 minutes, 6 zones with rainfall and drain series, safety data |
 | `src/services/` | Thin service layer. All reads and writes go through `respond()` in `client.ts`; replace with `fetch` calls for a real API |
-| `src/services/ai.ts` | Mock AI: depth suggestion from a photo, extra advice tips |
+| `src/services/ai.ts` | Photo depth via Groq vision (`/api/flood-photo`), extra advice tips |
+| `src/services/weather.ts`, `src/components/WeatherCard.tsx` | Live weather and 6-hour rain outlook from Open-Meteo, with a heavy-rain warning |
+| `src/store/location.ts` | One shared GPS watch: live dot and locate button on every map, weather location, report pin |
 | `src/constants/lifeCritical.ts` | Hard-coded, frozen life-critical lines and advisory banner. The AI layer cannot change them |
 | `src/lib/scoring.ts` | Pure storm simulation and zone ranking |
 | `src/store/` | Zustand stores: settings (layout, language, motion) and ops (storm, dispatch), persisted to localStorage |
 | `src/components/AppShell.tsx` | The single shell for both layouts. Nav order: Operations, Advice, Report (round camera button), My reports, Chat. Settings is the gear in the header |
 | `src/components/mascot/` | Titis, the chat mascot: 16 expressions and 15 moves as plain SVG and math (`poses.ts`), a frame loop with pointer-following gaze, blinking, press squish and napping (`engine.ts`) |
-| `src/services/chat.ts` | Mock chatbot: keyword intents in English and Bahasa Malaysia over the mock data. Urgent messages show the frozen safety lines, never generated text |
+| `src/services/chat.ts` | Chatbot: Groq LLM grounded in safety data, your reports and live weather; keyword intents for mascot mood, links and offline fallback. Urgent messages show the frozen safety lines, never generated text |
 
 ## Layout modes
 
@@ -40,6 +44,7 @@ The layout is applied as `data-layout="mobile" | "browser"` on `<html>`. Tailwin
 ## Prototype notes
 
 - Mock people are "Resident A", "Resident B" and so on. Zone, road and safe point names are fictional. Map coordinates are only used to place the fictional grid.
-- No external APIs are called at runtime. The only network requests are OpenStreetMap map tiles, which the service worker caches.
+- External calls: OpenStreetMap tiles and Open-Meteo weather (both cached by the service worker), and Groq through `/api/chat` and `/api/flood-photo`. The Groq routes run in the Vite dev/preview server (`server/groq.ts`) so the key never reaches the browser. A static host needs these two routes ported to its serverless functions.
+- Danger messages in chat never reach the LLM; they always show the frozen lines from `src/constants/lifeCritical.ts`.
 - Scoring: reports 35%, drain and rain sensors 50%, people affected 15%, plus an escalation as a drain passes 90% of capacity.
 - Check the official contact numbers and links with the agencies before any real use.

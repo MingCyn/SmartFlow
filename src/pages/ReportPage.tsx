@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleMarker } from 'react-leaflet'
-import { Camera, CircleCheck, ImagePlus, LocateFixed, LoaderCircle, Sparkles, X } from 'lucide-react'
+import { Camera, CircleCheck, ImagePlus, LocateFixed, LoaderCircle, Sparkles, TriangleAlert, X } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { TownshipMap } from '../components/TownshipMap'
 import { DepthPicker, depthLabel } from '../components/DepthPicker'
 import { StatusChip } from '../components/StatusChip'
 import { AdviceCard, LifeCriticalList } from '../components/AdviceCard'
+import { CameraCapture, canUseLiveCamera } from '../components/CameraCapture'
 import { useT } from '../i18n'
 import { distanceKm } from '../lib/geo'
 import { cellForPoint } from '../lib/scoring'
 import { suggestDepth, type DepthSuggestion } from '../services/ai'
 import { CELL_GEOMETRY, TOWNSHIP_CENTER } from '../services/cells'
 import { submitReport } from '../services/reports'
+import { retryLocation, useLiveLocation } from '../store/location'
+import { useSettings } from '../store/settings'
 import type { Depth, Report } from '../types'
 
 type GeoState = 'locating' | 'ok' | 'denied' | 'unavailable' | 'outside'
@@ -29,6 +32,10 @@ const btnSecondary = `${btn} border-2 border-primary-700 bg-white text-primary-7
 
 export default function ReportPage() {
   const t = useT()
+  const lang = useSettings((s) => s.lang)
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const captureInputRef = useRef<HTMLInputElement>(null)
+  const [aiError, setAiError] = useState(false)
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [ai, setAi] = useState<DepthSuggestion | null>(null)
@@ -38,7 +45,11 @@ export default function ReportPage() {
   const photoToken = useRef(0)
 
   const [pin, setPin] = useState<Pin | null>(null)
-  const [geo, setGeo] = useState<GeoState>('locating')
+  const live = useLiveLocation()
+  const liveInside = !!live.position && distanceKm(live.position, TOWNSHIP_CENTER) <= 5
+  // Real GPS will usually be outside the fictional demo township.
+  const geo: GeoState =
+    live.status === 'ok' ? (liveInside ? 'ok' : 'outside') : live.status === 'idle' ? 'locating' : live.status
   const [note, setNote] = useState('')
   const [showErrors, setShowErrors] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -49,22 +60,11 @@ export default function ReportPage() {
 
   const cell = useMemo(() => (pin ? cellForPoint(CELL_GEOMETRY, pin.lat, pin.lng) : null), [pin])
 
-  function locate() {
-    if (!('geolocation' in navigator)) return setGeo('unavailable')
-    setGeo('locating')
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        // Real GPS will usually be outside the fictional demo township.
-        if (distanceKm([coords.latitude, coords.longitude], TOWNSHIP_CENTER) > 5) return setGeo('outside')
-        setPin({ lat: coords.latitude, lng: coords.longitude, source: 'gps' })
-        setGeo('ok')
-      },
-      (err) => setGeo(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable'),
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
-    )
-  }
-
-  useEffect(locate, [])
+  // Follow the live GPS fix until the user places the pin by hand.
+  useEffect(() => {
+    if (!live.position || !liveInside) return
+    setPin((p) => (p?.source === 'map' ? p : { lat: live.position![0], lng: live.position![1], source: 'gps' }))
+  }, [live.position, liveInside])
 
   useEffect(() => {
     if (!photo) return setPreview(null)
@@ -76,24 +76,37 @@ export default function ReportPage() {
   function onPhoto(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (!file) return
+    if (file) acceptPhoto(file)
+  }
+
+  function acceptPhoto(file: File) {
+    setCameraOpen(false)
     setPhoto(file)
     setAi(null)
+    setAiError(false)
     setAiBusy(true)
     const token = ++photoToken.current
-    suggestDepth(file)
+    suggestDepth(file, lang)
       .then((s) => {
         if (token !== photoToken.current) return
         setAi(s)
-        if (!depthChosenByUser.current) setDepth(s.depth)
+        if (s.depth && !depthChosenByUser.current) setDepth(s.depth)
       })
+      .catch(() => token === photoToken.current && setAiError(true))
       .finally(() => token === photoToken.current && setAiBusy(false))
+  }
+
+  function takePhoto() {
+    // Live camera asks for permission; otherwise the phone's own camera app opens.
+    if (canUseLiveCamera()) setCameraOpen(true)
+    else captureInputRef.current?.click()
   }
 
   function removePhoto() {
     photoToken.current++
     setPhoto(null)
     setAi(null)
+    setAiError(false)
     setAiBusy(false)
   }
 
@@ -126,7 +139,7 @@ export default function ReportPage() {
     setNote('')
     setShowErrors(false)
     setResult(null)
-    if (geo !== 'ok') setPin(null)
+    setPin(liveInside && live.position ? { lat: live.position[0], lng: live.position[1], source: 'gps' } : null)
   }
 
   if (result) {
@@ -181,6 +194,7 @@ export default function ReportPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title={t('report.title')} subtitle={t('report.subtitle')} />
+      {cameraOpen && <CameraCapture onCapture={acceptPhoto} onClose={() => setCameraOpen(false)} />}
 
       <form onSubmit={onSubmit} noValidate className="space-y-5">
         {showErrors && errors.length > 0 && (
@@ -217,11 +231,11 @@ export default function ReportPage() {
             </div>
           ) : (
             <div className="mt-3 grid gap-2 browser:grid-cols-2">
-              <label className={`${btnPrimary} cursor-pointer has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary-600`}>
+              <button type="button" onClick={takePhoto} aria-describedby="photo-help" className={btnPrimary}>
                 <Camera aria-hidden className="size-5" />
                 {t('report.takePhoto')}
-                <input type="file" accept="image/*" capture="environment" onChange={onPhoto} aria-describedby="photo-help" className="sr-only" />
-              </label>
+              </button>
+              <input ref={captureInputRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} tabIndex={-1} aria-hidden className="hidden" />
               <label className={`${btnSecondary} cursor-pointer has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary-600`}>
                 <ImagePlus aria-hidden className="size-5" />
                 {t('report.choosePhoto')}
@@ -241,9 +255,22 @@ export default function ReportPage() {
               <p className="flex items-start gap-2 rounded-xl bg-primary-50 p-3 text-primary-900">
                 <Sparkles aria-hidden className="mt-0.5 size-5 shrink-0" />
                 <span>
-                  <strong>{t(depthLabel(ai.depth))}.</strong> {t('report.aiSuggested', { pct: Math.round(ai.confidence * 100) })}{' '}
+                  {ai.depth ? (
+                    <>
+                      <strong>{t(depthLabel(ai.depth))}.</strong> {t('report.aiSuggested', { pct: Math.round(ai.confidence * 100) })}
+                    </>
+                  ) : (
+                    t('report.aiNone')
+                  )}{' '}
                   <span className="text-sm text-primary-800">({t('report.aiLabel')})</span>
+                  {ai.summary && <span className="mt-1 block text-sm text-primary-800">{ai.summary}</span>}
                 </span>
+              </p>
+            )}
+            {aiError && (
+              <p className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-amber-950">
+                <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
+                {t('report.aiError')}
               </p>
             )}
           </div>
@@ -259,7 +286,7 @@ export default function ReportPage() {
             {geoMessage}
           </p>
           {geo !== 'ok' && geo !== 'locating' && (
-            <button type="button" onClick={locate} className="mt-2 inline-flex items-center gap-2 rounded font-semibold text-primary-700 underline underline-offset-2">
+            <button type="button" onClick={retryLocation} className="mt-2 inline-flex items-center gap-2 rounded font-semibold text-primary-700 underline underline-offset-2">
               <LocateFixed aria-hidden className="size-4" />
               {t('report.retryLocation')}
             </button>

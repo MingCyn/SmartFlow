@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { ExternalLink, MapPin, Phone, Sparkles } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
+import { WeatherCard } from '../components/WeatherCard'
 import { AdviceCard, LifeCriticalList } from '../components/AdviceCard'
 import { useT } from '../i18n'
 import { distanceKm } from '../lib/geo'
@@ -89,6 +90,7 @@ export default function AdvicePage() {
         </Link>
       </div>
       {/* ------------------------------------ */}
+      <WeatherCard className="mb-5" />
 
       <AdviceCard labelledBy="adv-stay">
         <div className="space-y-8">

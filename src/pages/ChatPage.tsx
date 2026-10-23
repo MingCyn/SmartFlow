@@ -27,6 +27,7 @@ const MOOD: Record<Intent, { expression: ExprId; anim: AnimId }> = {
   depth: { expression: 'surprised', anim: 'wide' },
   thanks: { expression: 'laughing', anim: 'burst' },
   fallback: { expression: 'confused', anim: 'swirl' },
+  answer: { expression: 'happy', anim: 'notify' },
 }
 
 const POKE_MOVES: AnimId[] = ['wink', 'play', 'egg', 'hexagon', 'swirl', 'orbit', 'comet', 'burst']
@@ -128,7 +129,8 @@ export default function ChatPage() {
     setMessages((m) => [...m, { id: Date.now(), from: 'user', text: clean }])
     setBusy(true)
     try {
-      const reply = await askBot(clean, lang)
+      const history = messages.slice(-10).map((m) => ({ role: m.from === 'user' ? ('user' as const) : ('assistant' as const), content: m.text }))
+      const reply = await askBot(clean, lang, history)
       setMessages((m) => [...m, { id: Date.now() + 1, from: 'bot', ...reply }])
       const mood = MOOD[reply.intent]
       setExpression(mood.expression)

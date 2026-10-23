@@ -1,7 +1,10 @@
-import { useEffect, type ReactNode } from 'react'
-import { MapContainer, Rectangle, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { Map as LeafletMap } from 'leaflet'
+import { Circle, CircleMarker, MapContainer, Rectangle, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { LoaderCircle, LocateFixed } from 'lucide-react'
 import { CELL_GEOMETRY, TOWNSHIP_CENTER } from '../services/cells'
 import { usePrefersReducedMotion } from '../store/settings'
+import { retryLocation, useLiveLocation } from '../store/location'
 import { useT } from '../i18n'
 import type { LatLng } from '../types'
 
@@ -15,16 +18,39 @@ interface Props {
   cellTint?: Record<string, number>
   focus?: LatLng | null
   zoom?: number
+  /** Show the user's live GPS position and a locate-me button. On by default. */
+  liveLocation?: boolean
 }
 
-export function TownshipMap({ label, className = 'h-72', children, onPick, highlightCellId, cellTint, focus, zoom = 14 }: Props) {
+export function TownshipMap({ label, className = 'h-72', children, onPick, highlightCellId, cellTint, focus, zoom = 14, liveLocation = true }: Props) {
   const t = useT()
   const reduced = usePrefersReducedMotion()
+  const geo = useLiveLocation(liveLocation)
+  const mapRef = useRef<LeafletMap>(null)
+  const [wantFly, setWantFly] = useState(false)
+
+  // Fly once the fix arrives if the user pressed locate while still waiting.
+  useEffect(() => {
+    if (!wantFly || !geo.position || !mapRef.current) return
+    setWantFly(false)
+    const z = Math.max(mapRef.current.getZoom(), 16)
+    if (reduced) mapRef.current.setView(geo.position, z, { animate: false })
+    else mapRef.current.flyTo(geo.position, z, { duration: 0.8 })
+  }, [wantFly, geo.position, reduced])
+
+  function locateMe() {
+    if (geo.status === 'denied' || geo.status === 'unavailable') retryLocation()
+    setWantFly(true)
+  }
+
+  const locBusy = wantFly && !geo.position && geo.status !== 'denied' && geo.status !== 'unavailable'
+
   return (
-    <div className={`overflow-hidden rounded-xl border border-slate-300 ${className}`}>
+    <div className={`relative overflow-hidden rounded-xl border border-slate-300 ${className}`}>
       {/* Leaflet reads animation options only on creation, so remount when reduced motion changes. */}
       <MapContainer
         key={reduced ? 'still' : 'animated'}
+        ref={mapRef}
         center={TOWNSHIP_CENTER}
         zoom={zoom}
         className="size-full"
@@ -57,8 +83,29 @@ export function TownshipMap({ label, className = 'h-72', children, onPick, highl
         ))}
         {onPick && <ClickToPick onPick={onPick} />}
         {focus && <FocusOn target={focus} />}
+        {liveLocation && geo.position && (
+          <>
+            {geo.accuracyM !== null && geo.accuracyM < 2000 && (
+              <Circle center={geo.position} radius={geo.accuracyM} interactive={false} pathOptions={{ color: '#2563eb', weight: 1, fillColor: '#3b82f6', fillOpacity: 0.12 }} />
+            )}
+            <CircleMarker center={geo.position} radius={8} pathOptions={{ color: '#fff', weight: 3, fillColor: '#2563eb', fillOpacity: 1 }}>
+              <Tooltip direction="top" offset={[0, -8]}>{t('map.you')}</Tooltip>
+            </CircleMarker>
+          </>
+        )}
         {children}
       </MapContainer>
+      {liveLocation && (
+        <button
+          type="button"
+          onClick={locateMe}
+          aria-label={t('map.locateMe')}
+          title={geo.status === 'denied' ? t('map.locDenied') : t('map.locateMe')}
+          className="absolute bottom-3 right-3 z-[1000] inline-flex size-11 items-center justify-center rounded-full border border-slate-300 bg-white text-primary-700 shadow-md hover:bg-primary-50"
+        >
+          {locBusy ? <LoaderCircle aria-hidden className="size-5 animate-spin" /> : <LocateFixed aria-hidden className={`size-5 ${geo.status === 'ok' ? 'text-blue-600' : ''}`} />}
+        </button>
+      )}
     </div>
   )
 }
