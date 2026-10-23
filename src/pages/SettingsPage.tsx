@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { Bell } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { LocationPrompt } from '../components/LocationPrompt'
 import { useLiveLocation } from '../store/location'
@@ -54,6 +56,8 @@ export default function SettingsPage() {
             <LocationPrompt />
           )}
         </section>
+
+        <FloodAlertSettings />
 
         <fieldset className="rounded-2xl border border-slate-200 bg-white p-4">
           <legend className="px-1 text-lg font-semibold">{t('settings.layout')}</legend>
@@ -141,5 +145,45 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+/** In-app flood alerts are always on; this asks for system notifications so alerts also show outside the app. */
+function FloodAlertSettings() {
+  const t = useT()
+  const supported = typeof window !== 'undefined' && 'Notification' in window
+  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(supported ? Notification.permission : 'unsupported')
+
+  async function allow() {
+    try {
+      setPermission(await Notification.requestPermission())
+    } catch {
+      setPermission(Notification.permission)
+    }
+  }
+
+  return (
+    <section aria-labelledby="alerts-h" className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h2 id="alerts-h" className="text-lg font-semibold">
+        {t('settings.alerts')}
+      </h2>
+      <p className="text-slate-700">{t('settings.alertsDesc')}</p>
+      <p className="mt-2" aria-live="polite">
+        {permission === 'default' ? (
+          <button
+            type="button"
+            onClick={allow}
+            className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-primary-700 px-4 font-semibold text-white hover:bg-primary-800"
+          >
+            <Bell aria-hidden className="size-5" />
+            {t('settings.alertsAllow')}
+          </button>
+        ) : (
+          <span className="font-medium text-slate-800">
+            {t(permission === 'granted' ? 'settings.alertsOn' : permission === 'denied' ? 'settings.alertsBlocked' : 'settings.alertsUnsupported')}
+          </span>
+        )}
+      </p>
+    </section>
   )
 }

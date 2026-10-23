@@ -1,12 +1,9 @@
-import { Link } from 'react-router-dom'
 import { Droplet, AlertTriangle, ShieldCheck, ExternalLink, Clock, Calendar } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { AdviceCard } from '../components/AdviceCard'
-import { useT } from '../i18n'
 import { useSettings } from '../store/settings'
 
 export default function WaterOutagePage() {
-  const t = useT()
   const lang = useSettings((s) => s.lang)
 
   // --- MOCK SCHEDULED OUTAGE DATA (Real-world style notice) ---

@@ -6,6 +6,8 @@ import { useWeather } from '../store/weather'
 import { HEAVY_RAIN_3H_MM } from '../services/weather'
 import { useT, type TKey } from '../i18n'
 import { MascotIcon } from './mascot/Mascot'
+import { FloodAlerts } from './FloodAlerts'
+import { useFloodWatch } from '../store/floods'
 
 interface Tab {
   to: string
@@ -35,6 +37,7 @@ export function AppShell() {
   const { weather } = useWeather()
   const heavyRain = !!weather && weather.next3hMm >= HEAVY_RAIN_3H_MM
   const [scrolled, setScrolled] = useState(false)
+  useFloodWatch()
 
   // Press-and-hold on touch shows the tab name; it lingers briefly after release.
   const [peek, setPeek] = useState<string | null>(null)
@@ -219,6 +222,8 @@ export function AppShell() {
             </NavLink>
           </div>
         </header>
+
+        <FloodAlerts />
 
         <main id="main" tabIndex={-1} className="flex-1 px-4 py-5 outline-none mobile:pb-36 browser:px-6 browser:py-6">
           <Outlet />

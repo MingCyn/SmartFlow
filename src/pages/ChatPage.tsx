@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ArrowUp, Check, ClipboardList, Copy, LifeBuoy, MapPin, OctagonAlert, SquarePen, TriangleAlert, type LucideIcon } from 'lucide-react'
+import { ArrowUp, Check, ClipboardList, Copy, LifeBuoy, MapPin, OctagonAlert, SquarePen, TriangleAlert, Waves, type LucideIcon } from 'lucide-react'
 import { Mascot, type AnimId, type ExprId } from '../components/mascot/Mascot'
 import { LifeCriticalList } from '../components/AdviceCard'
 import { ADVISORY_BANNER } from '../constants/lifeCritical'
@@ -20,6 +20,7 @@ const MOOD: Record<Intent, { expression: ExprId; anim: AnimId }> = {
   danger: { expression: 'attentive', anim: 'alert' },
   report: { expression: 'excited', anim: 'play' },
   status: { expression: 'curious', anim: 'notify' },
+  flood: { expression: 'attentive', anim: 'exclaim' },
   roads: { expression: 'attentive', anim: 'exclaim' },
   safe: { expression: 'proud', anim: 'orbit' },
   bring: { expression: 'happy', anim: 'egg' },
@@ -224,6 +225,14 @@ export default function ChatPage() {
             >
               <OctagonAlert aria-hidden className="size-5 shrink-0 text-red-700" />
               {t('chip.help')}
+            </button>
+            <button
+              type="button"
+              onClick={() => send(t('chip.floods'))}
+              className="flex items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-left font-medium text-slate-800 hover:border-primary-600 hover:bg-primary-50 browser:col-span-2"
+            >
+              <Waves aria-hidden className="size-5 shrink-0 text-primary-700" />
+              {t('chip.floods')}
             </button>
             {STARTERS.map(({ key, Icon }) => (
               <button

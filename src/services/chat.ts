@@ -11,10 +11,12 @@ import { getMyReports } from './reports'
 import { getSafety } from './safety'
 import { getWeather, weatherLabel } from './weather'
 import { TOWNSHIP_CENTER } from './cells'
+import { floodAnchor, getFloodAreas, LEVEL_DEPTH, type FloodArea } from './floods'
+import { depthLabel } from '../components/DepthPicker'
 import { useGeo } from '../store/location'
 
 export type Intent =
-  | 'greeting' | 'danger' | 'report' | 'status' | 'roads' | 'safe'
+  | 'greeting' | 'danger' | 'report' | 'status' | 'flood' | 'roads' | 'safe'
   | 'bring' | 'contacts' | 'depth' | 'thanks' | 'fallback' | 'answer'
 
 export interface BotReply {
@@ -32,6 +34,7 @@ const INTENTS: [Intent, RegExp][] = [
   ['greeting', /^\s*(hi|hello|hey|hai|helo|salam|assalamualaikum|selamat (pagi|petang|malam))\s*[!.]*\s*$/i],
   ['status', /\b(status|my report|track|laporan saya|jejak)/i],
   ['report', /\b(report|photo|lapor|gambar|send a)/i],
+  ['flood', /\b(flood|banjir|which (area|zone|place)s?|kawasan mana|zon mana|water level|paras air)/i],
   ['roads', /\b(road|jalan|avoid|elak|closed|tutup|drive|memandu)/i],
   ['safe', /\b(safe|shelter|evacuat|hall|pindah|selamat|dewan|pps)/i],
   ['bring', /\b(bring|pack|bag|checklist|bawa|dibawa|kemas|beg)/i],
@@ -50,12 +53,20 @@ export interface ChatTurn {
   content: string
 }
 
+/** One line per flooded area, e.g. "Riverside path, 0.5 km away: Flooded (Knee deep)". */
+function floodLine(a: FloodArea, lang: Lang): string {
+  const tr = (k: TKey, v?: Record<string, string | number>) => translate(lang, k, v)
+  const depth = LEVEL_DEPTH[a.level]
+  return `${a.name[lang]}, ${tr('flood.away', { km: a.km })}: ${tr(`flood.level.${a.level}`)}${depth ? ` (${tr(depthLabel(depth))})` : ''}`
+}
+
 /** Facts the LLM may use. It is told never to state anything outside this. */
 async function buildContext(lang: Lang): Promise<string> {
   const tr = (k: TKey, v?: Record<string, string | number>) => translate(lang, k, v)
-  const [safety, reports, weather] = await Promise.all([
+  const [safety, reports, floods, weather] = await Promise.all([
     getSafety(),
     getMyReports(),
+    getFloodAreas(),
     getWeather(useGeo.getState().position ?? TOWNSHIP_CENTER, AbortSignal.timeout(4000)).catch(() => null),
   ])
   const lines = [
@@ -67,6 +78,9 @@ async function buildContext(lang: Lang): Promise<string> {
     reports.length
       ? "User's reports: " + reports.slice(0, 3).map((r) => `${r.id} in zone ${r.cellId}, ${r.depth}, status ${tr(STATUS_META[r.status].label)}, sent ${r.createdAt}`).join('; ')
       : 'User has not sent any reports.',
+    // Live feed, rebuilt on every message. Distances are from the user, or the township centre without GPS.
+    `Flooded areas right now (simulated demo data, ${new Date().toISOString()}, distances from ${floodAnchor().isUser ? "user's location" : 'township centre'}, nearest first): ` +
+      (floods.length ? floods.map((a) => floodLine(a, lang)).join('; ') : 'none'),
   ]
   if (weather)
     lines.push(
@@ -95,8 +109,9 @@ export async function askBot(message: string, lang: Lang, history: ChatTurn[] = 
   if (local.critical) return local
   try {
     const text = await askLlm([...history, { role: 'user', content: message }], lang)
-    // Prose replaces the canned text and lists; keep the quick links.
-    return { intent: local.intent === 'fallback' ? 'answer' : local.intent, text, links: local.links }
+    // Prose replaces the canned text and lists; keep the quick links. The flood list stays,
+    // so the live areas show exactly as the map has them.
+    return { intent: local.intent === 'fallback' ? 'answer' : local.intent, text, links: local.links, items: local.intent === 'flood' ? local.items : undefined }
   } catch {
     return local
   }
@@ -124,6 +139,13 @@ async function keywordReply(message: string, lang: Lang): Promise<BotReply> {
             links: [{ to: '/status', label: tr('nav.status') }],
           }
         : { intent, text: tr('bot.statusNone'), links: [{ to: '/report', label: tr('chip.report') }] }
+      break
+    }
+    case 'flood': {
+      const floods = (await getFloodAreas()).filter((a) => a.level !== 'watch')
+      reply = floods.length
+        ? { intent, text: tr('bot.floods'), items: floods.slice(0, 6).map((a) => floodLine(a, lang)), links: [{ to: '/ops', label: tr('flood.showMap') }, adviceLink] }
+        : { intent, text: tr('bot.floodsNone'), links: [{ to: '/report', label: tr('chip.report') }] }
       break
     }
     case 'roads': {

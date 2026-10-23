@@ -3,7 +3,9 @@ import type { Map as LeafletMap } from 'leaflet'
 import { Circle, CircleMarker, MapContainer, Rectangle, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import { LoaderCircle, LocateFixed } from 'lucide-react'
 import { CELL_GEOMETRY, TOWNSHIP_CENTER } from '../services/cells'
-import { usePrefersReducedMotion } from '../store/settings'
+import { usePrefersReducedMotion, useSettings } from '../store/settings'
+import { useFloods } from '../store/floods'
+import type { FloodLevel } from '../services/floods'
 import { retryLocation, useLiveLocation } from '../store/location'
 import { useT } from '../i18n'
 import type { LatLng } from '../types'
@@ -20,9 +22,11 @@ interface Props {
   zoom?: number
   /** Show the user's live GPS position and a locate-me button. On by default. */
   liveLocation?: boolean
+  /** Show the simulated flooded areas. On by default. */
+  floods?: boolean
 }
 
-export function TownshipMap({ label, className = 'h-72', children, onPick, highlightCellId, cellTint, focus, zoom = 14, liveLocation = true }: Props) {
+export function TownshipMap({ label, className = 'h-72', children, onPick, highlightCellId, cellTint, focus, zoom = 14, liveLocation = true, floods = true }: Props) {
   const t = useT()
   const reduced = usePrefersReducedMotion()
   const geo = useLiveLocation(liveLocation)
@@ -81,6 +85,7 @@ export function TownshipMap({ label, className = 'h-72', children, onPick, highl
             </Tooltip>
           </Rectangle>
         ))}
+        {floods && <FloodLayer />}
         {onPick && <ClickToPick onPick={onPick} />}
         {focus && <FocusOn target={focus} />}
         {liveLocation && geo.position && (
@@ -108,6 +113,35 @@ export function TownshipMap({ label, className = 'h-72', children, onPick, highl
       )}
     </div>
   )
+}
+
+const FLOOD_STYLE: Record<FloodLevel, { color: string; fillOpacity: number; dashArray?: string; label: 'flood.level.watch' | 'flood.level.flooded' | 'flood.level.severe' }> = {
+  watch: { color: '#d97706', fillOpacity: 0.08, dashArray: '6 6', label: 'flood.level.watch' },
+  flooded: { color: '#d97706', fillOpacity: 0.3, label: 'flood.level.flooded' },
+  severe: { color: '#b91c1c', fillOpacity: 0.35, label: 'flood.level.severe' },
+}
+
+/** Simulated flooded areas from the shared live feed. Clicks pass through so pin-dropping still works. */
+function FloodLayer() {
+  const t = useT()
+  const lang = useSettings((s) => s.lang)
+  const areas = useFloods((s) => s.areas)
+  return areas.map((a) => {
+    const style = FLOOD_STYLE[a.level]
+    return (
+      <Circle
+        key={a.id}
+        center={[a.lat, a.lng]}
+        radius={a.radiusM}
+        bubblingMouseEvents
+        pathOptions={{ color: style.color, weight: 2, fillColor: style.color, fillOpacity: style.fillOpacity, dashArray: style.dashArray }}
+      >
+        <Tooltip direction="top" sticky>
+          <span className="font-semibold">{a.name[lang]}</span>: {t(style.label)} ({t('flood.simulated')})
+        </Tooltip>
+      </Circle>
+    )
+  })
 }
 
 /** Labels the map region and keeps tiles correct when the layout toggle resizes the container. */

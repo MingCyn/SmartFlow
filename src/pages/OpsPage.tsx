@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CircleMarker, Popup } from 'react-leaflet'
-import { ArrowDownRight, ArrowRight, ArrowUpRight, CloudRain, RotateCcw, type LucideIcon } from 'lucide-react'
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CloudRain, MapPinPlus, RotateCcw, type LucideIcon } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { WeatherCard } from '../components/WeatherCard'
 import { StatusChip } from '../components/StatusChip'
@@ -14,6 +15,7 @@ import { useAsync } from '../lib/useAsync'
 import { getCells } from '../services/cells'
 import { getReports } from '../services/reports'
 import { useOps } from '../store/ops'
+import { useFloods } from '../store/floods'
 import { useSettings } from '../store/settings'
 import type { DispatchStatus, LatLng, RankedCell, Trend } from '../types'
 
@@ -34,6 +36,12 @@ const DISPATCH: { value: DispatchStatus; label: TKey }[] = [
 
 
 
+const FLOOD_LEGEND: { label: TKey; color: string; fill: string }[] = [
+  { label: 'flood.level.watch', color: '#d97706', fill: 'transparent' },
+  { label: 'flood.level.flooded', color: '#d97706', fill: '#fcd34d' },
+  { label: 'flood.level.severe', color: '#b91c1c', fill: '#fca5a5' },
+]
+
 function stormLevel(storm: number): TKey {
   if (storm < 25) return 'ops.level.light'
   if (storm < 50) return 'ops.level.moderate'
@@ -44,7 +52,9 @@ function stormLevel(storm: number): TKey {
 export default function OpsPage() {
   const t = useT()
   const lang = useSettings((s) => s.lang)
-  const { storm, setStorm, dispatch, setDispatch, reset } = useOps()
+  const { storm, setStorm, dispatch, setDispatch, addFloodNearby, reset } = useOps()
+  const floodAreas = useFloods((s) => s.areas)
+  const [params] = useSearchParams()
   const cells = useAsync(getCells)
   const reports = useAsync(getReports)
   const [updatedAt, setUpdatedAt] = useState(() => new Date())
@@ -85,6 +95,18 @@ export default function OpsPage() {
   const cellTint = useMemo(() => Object.fromEntries(ranked.map((r) => [r.cell.id, r.score / 100])), [ranked])
   const all = reports.data ?? []
   const onSite = Object.values(dispatch).filter((d) => d === 'on-site').length
+
+  // "Show on map" from a flood alert: pan once to that area, even if it loads a moment later.
+  const floodParam = params.get('flood')
+  const pannedFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (!floodParam || pannedFor.current === floodParam) return
+    const area = floodAreas.find((a) => a.id === floodParam)
+    if (!area) return
+    pannedFor.current = floodParam
+    if (cells.data?.some((c) => c.id === area.id)) setSelected(area.id)
+    setFocus([area.lat, area.lng])
+  }, [floodParam, floodAreas, cells.data])
 
   function selectCell(rc: RankedCell) {
     setSelected(rc.cell.id)
@@ -162,6 +184,18 @@ export default function OpsPage() {
             aria-valuetext={`${t(stormLevel(storm))}, ${storm}%`}
             className="mt-1 h-10 w-full accent-primary-700"
           />
+          <button
+            type="button"
+            onClick={addFloodNearby}
+            aria-describedby="add-flood-desc"
+            className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-primary-700 bg-white px-3 font-semibold text-primary-700 hover:bg-primary-50"
+          >
+            <MapPinPlus aria-hidden className="size-5" />
+            {t('flood.addNear')}
+          </button>
+          <p id="add-flood-desc" className="mt-1 text-sm text-slate-700">
+            {t('flood.addNearHelp')}
+          </p>
         </section>
 
         {/* Map */}
@@ -207,6 +241,16 @@ export default function OpsPage() {
                 <StatusChip status={s} />
               </span>
             ))}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" role="group" aria-label={t('flood.legend')}>
+            <span className="font-medium text-slate-700">{t('flood.legend')}:</span>
+            {FLOOD_LEGEND.map((f) => (
+              <span key={f.label} className="inline-flex items-center gap-1.5 text-slate-800">
+                <span aria-hidden className="inline-block size-3 rounded-full border-2" style={{ borderColor: f.color, background: f.fill }} />
+                {t(f.label)}
+              </span>
+            ))}
+            <span className="text-sm text-slate-700">({t('flood.simulated')})</span>
           </div>
         </section>
 
