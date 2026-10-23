@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { CircleMarker, Popup } from 'react-leaflet'
 import { ArrowDownRight, ArrowRight, ArrowUpRight, CloudRain, RotateCcw, type LucideIcon } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
-import { WeatherCard } from '../components/WeatherCard'
 import { StatusChip } from '../components/StatusChip'
 import { TownshipMap } from '../components/TownshipMap'
 import { depthLabel } from '../components/DepthPicker'
@@ -122,7 +121,6 @@ export default function OpsPage() {
         ))}
       </dl>
 
-      <WeatherCard className="mb-5" />
 
       <div className="flex flex-col gap-5 browser:grid browser:grid-cols-[minmax(340px,420px)_1fr] browser:grid-rows-[auto_1fr]">
         {/* Storm simulator */}

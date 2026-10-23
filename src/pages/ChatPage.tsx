@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { ArrowUp, Check, ClipboardList, Copy, LifeBuoy, MapPin, OctagonAlert, SquarePen, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { Mascot, type AnimId, type ExprId } from '../components/mascot/Mascot'
 import { LifeCriticalList } from '../components/AdviceCard'
+import { RouteCard } from '../components/RouteCard'
 import { ADVISORY_BANNER } from '../constants/lifeCritical'
 import { useT, type TKey } from '../i18n'
 import { askBot, type BotReply, type Intent } from '../services/chat'
@@ -71,6 +72,7 @@ export default function ChatPage() {
   const openedAt = useRef(Date.now())
   const enter = (id: number) => (id > openedAt.current ? 'animate-rise' : '')
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const [params, setParams] = useSearchParams()
 
   const doPlay = (id: AnimId) => setPlay({ id, nonce: ++nonce.current })
 
@@ -143,6 +145,16 @@ export default function ChatPage() {
       inputRef.current?.focus()
     }
   }
+
+  // Deep link from other pages, e.g. /chat?ask=Safest%20route: ask once, then clear the URL.
+  const ask = params.get('ask')
+  const asked = useRef<string | null>(null)
+  useEffect(() => {
+    if (!ask || asked.current === ask) return
+    asked.current = ask
+    setParams({}, { replace: true })
+    send(ask.slice(0, 300))
+  }, [ask]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -266,6 +278,7 @@ export default function ChatPage() {
                     ))}
                   </ul>
                 )}
+                {m.route && <RouteCard plan={m.route} />}
                 {m.links && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {m.links.map((l) => (

@@ -10,6 +10,7 @@ import { respond } from './client'
 import { getMyReports } from './reports'
 import { getSafety } from './safety'
 import { getWeather, weatherLabel } from './weather'
+import { planEvacuation, planFacts, type EvacPlan } from './evacuation'
 import { TOWNSHIP_CENTER } from './cells'
 import { useGeo } from '../store/location'
 
@@ -23,6 +24,8 @@ export interface BotReply {
   items?: string[]
   links?: { to: string; label: string }[]
   critical?: boolean
+  /** Pinned start, destination and safest route, drawn as a map under the reply. */
+  route?: EvacPlan
 }
 
 // Order matters: danger is always checked first.
@@ -33,7 +36,7 @@ const INTENTS: [Intent, RegExp][] = [
   ['status', /\b(status|my report|track|laporan saya|jejak)/i],
   ['report', /\b(report|photo|lapor|gambar|send a)/i],
   ['roads', /\b(road|jalan|avoid|elak|closed|tutup|drive|memandu)/i],
-  ['safe', /\b(safe|shelter|evacuat|hall|pindah|selamat|dewan|pps)/i],
+  ['safe', /\b(safe|shelter|evacuat|hall|route|way to|higher ground|high ground|high place|where (do|should) i go|pindah|selamat|dewan|pps|laluan|tempat tinggi|kawasan tinggi)/i],
   ['bring', /\b(bring|pack|bag|checklist|bawa|dibawa|kemas|beg)/i],
   ['contacts', /\b(contact|call|number|phone|bomba|nadma|jps|hubungi|nombor|telefon)/i],
   ['depth', /\b(deep|depth|ankle|knee|dalam|buku lali|lutut)/i],
@@ -51,7 +54,7 @@ export interface ChatTurn {
 }
 
 /** Facts the LLM may use. It is told never to state anything outside this. */
-async function buildContext(lang: Lang): Promise<string> {
+async function buildContext(lang: Lang, extra: string[] = []): Promise<string> {
   const tr = (k: TKey, v?: Record<string, string | number>) => translate(lang, k, v)
   const [safety, reports, weather] = await Promise.all([
     getSafety(),
@@ -72,14 +75,14 @@ async function buildContext(lang: Lang): Promise<string> {
     lines.push(
       `Live weather (${useGeo.getState().position ? "user's location" : 'township'}): ${weatherLabel(weather.code, lang)}, ${Math.round(weather.tempC)} C, rain now ${weather.precipMm} mm, next 3 hours ${weather.next3hMm} mm, hourly rain chance ${weather.next.map((h) => h.chancePct + '%').join(' ')}.`,
     )
-  return lines.join('\n')
+  return [...lines, ...extra].join('\n')
 }
 
-async function askLlm(history: ChatTurn[], lang: Lang): Promise<string> {
+async function askLlm(history: ChatTurn[], lang: Lang, extra: string[] = []): Promise<string> {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lang, history, context: await buildContext(lang) }),
+    body: JSON.stringify({ lang, history, context: await buildContext(lang, extra) }),
     signal: AbortSignal.timeout(25_000),
   })
   if (!res.ok) throw new Error(`chat ${res.status}`)
@@ -94,9 +97,16 @@ export async function askBot(message: string, lang: Lang, history: ChatTurn[] = 
   // Danger never goes to the model: the frozen safety lines are the whole answer.
   if (local.critical) return local
   try {
-    const text = await askLlm([...history, { role: 'user', content: message }], lang)
-    // Prose replaces the canned text and lists; keep the quick links.
-    return { intent: local.intent === 'fallback' ? 'answer' : local.intent, text, links: local.links }
+    const extra = local.route ? [planFacts(local.route)] : []
+    const text = await askLlm([...history, { role: 'user', content: message }], lang, extra)
+    // Prose replaces the canned text; keep the quick links, the route map and the go-bag list.
+    return {
+      intent: local.intent === 'fallback' ? 'answer' : local.intent,
+      text,
+      links: local.links,
+      route: local.route,
+      items: local.intent === 'bring' ? local.items : undefined,
+    }
   } catch {
     return local
   }
@@ -137,8 +147,21 @@ async function keywordReply(message: string, lang: Lang): Promise<BotReply> {
       break
     }
     case 'safe': {
-      const { safePoints } = await getSafety()
-      reply = { intent, text: tr('bot.safe'), items: safePoints.map((s) => `${s.name[lang]}, ${tr('zone', { id: s.cellId })}. ${s.note[lang]}`), links: [adviceLink] }
+      const safety = await getSafety()
+      const route = await planEvacuation(safety, lang).catch(() => null)
+      reply = route
+        ? {
+            intent,
+            text: tr(route.dest.kind === 'shelter' ? 'bot.routeShelter' : route.flat ? 'bot.routeFlat' : 'bot.routeHigh', {
+              place: route.dest.name || tr('route.highGround'),
+              km: route.distanceKm,
+              min: route.walkMin,
+              m: route.gainM ?? '?',
+            }),
+            route,
+            links: [adviceLink],
+          }
+        : { intent, text: tr('bot.safe'), items: safety.safePoints.map((s) => `${s.name[lang]}, ${tr('zone', { id: s.cellId })}. ${s.note[lang]}`), links: [adviceLink] }
       break
     }
     case 'bring': {

@@ -103,7 +103,6 @@ export function AppShell() {
                 <span aria-hidden className="mt-0.5 block h-0.5 w-6 rounded bg-sdp" />
               </span>
             </NavLink>
-            <span className="rounded-full border border-slate-300 px-2 py-0.5 text-sm text-slate-700">{t('app.demo')}</span>
 
             <nav
               aria-label={t('nav.label')}

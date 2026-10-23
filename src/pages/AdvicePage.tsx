@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { Check, ChevronRight, Droplets, ExternalLink, MapPin, Phone, Sparkles } from 'lucide-react'
+import { Check, ChevronRight, Droplets, ExternalLink, MapPin, Phone } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { SkyHero } from '../components/SkyHero'
 import { AdviceCard, LifeCriticalList } from '../components/AdviceCard'
+import { ZoneGuide } from '../components/ZoneGuide'
 import { useT } from '../i18n'
 import { distanceKm } from '../lib/geo'
-import { trendOf } from '../lib/scoring'
 import { useAsync } from '../lib/useAsync'
-import { getAdviceTips } from '../services/ai'
 import { CELL_GEOMETRY } from '../services/cells'
 import { readLocal, writeLocal } from '../services/client'
 import { getSafety } from '../services/safety'
@@ -24,10 +23,8 @@ export default function AdvicePage() {
   const cellId = CELL_GEOMETRY.some((c) => c.id === params.get('cell')) ? params.get('cell')! : DEFAULT_CELL
   const cell = CELL_GEOMETRY.find((c) => c.id === cellId)!
   const zone = t('zone', { id: cellId })
-  const rising = trendOf(cell.drainLevelCm) === 'rising'
 
   const safety = useAsync(getSafety)
-  const tips = useAsync(() => getAdviceTips({ cellId, rising }, lang), [cellId, lang])
 
   const [packed, setPacked] = useState<string[]>(() => readLocal(CHECKLIST_KEY, []))
   const toggle = (id: string) =>
@@ -72,6 +69,8 @@ export default function AdvicePage() {
           </label>
         }
       />
+
+      <ZoneGuide cellId={cellId} />
 
       {/* Water supply lives on its own page; one tappable row gets there. */}
       <Link
@@ -242,26 +241,6 @@ export default function AdvicePage() {
               </section>
             </div>
           )}
-          
-
-
-          {/* Mock AI tips: rendered separately from, and after, the fixed safety lines. */}
-          <section aria-labelledby="adv-tips" className="rounded-xl bg-slate-50 p-4">
-            <h2 id="adv-tips" className="flex items-center gap-2 text-xl font-bold">
-              <Sparkles aria-hidden className="size-5 text-primary-700" />
-              {t('advice.tips', { zone })}
-            </h2>
-            <p className="text-sm text-slate-700">{t('advice.tipsNote')}</p>
-            {tips.data ? (
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                {tips.data.map((tip) => (
-                  <li key={tip}>{tip}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-slate-700">{t('common.loading')}</p>
-            )}
-          </section>
         </div>
       </AdviceCard>
     </div>
