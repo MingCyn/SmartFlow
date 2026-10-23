@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { TriangleAlert, Waves, X } from 'lucide-react'
+import { TrendingDown, TriangleAlert, Waves, X } from 'lucide-react'
 import { useT } from '../i18n'
 import { alertText, useFloods, type FloodAlert } from '../store/floods'
 import { useSettings } from '../store/settings'
@@ -29,9 +29,17 @@ function AlertCard({ alert }: { alert: FloodAlert }) {
   const t = useT()
   const lang = useSettings((s) => s.lang)
   const dismiss = useFloods((s) => s.dismiss)
-  const severe = alert.area.level === 'severe'
-  const { title, body } = alertText(alert.area, lang)
-  const Icon = severe ? TriangleAlert : Waves
+  const receding = alert.kind === 'receding'
+  const severe = !receding && alert.area.level === 'severe'
+  const { title, body } = alertText(alert, lang)
+  const Icon = receding ? TrendingDown : severe ? TriangleAlert : Waves
+  const tone = receding
+    ? { border: 'border-green-600', badge: 'bg-green-50 text-green-800', title: 'text-green-900' }
+    : severe
+      ? { border: 'border-red-700', badge: 'bg-red-50 text-red-700', title: 'text-red-900' }
+      : { border: 'border-amber-400', badge: 'bg-amber-50 text-amber-800', title: 'text-amber-950' }
+  // A cleared fake spot is no longer on the map, so there is nothing to show.
+  const canShow = !(receding && alert.now === null && alert.area.nearby)
 
   useEffect(() => {
     const id = window.setTimeout(() => dismiss(alert.key), SHOW_MS)
@@ -41,28 +49,28 @@ function AlertCard({ alert }: { alert: FloodAlert }) {
   return (
     <div
       role={severe ? 'alert' : 'status'}
-      className={`pointer-events-auto animate-rise rounded-2xl border-2 bg-white p-3 shadow-[0_14px_36px_-12px_rgb(15_23_42/0.38)] ${
-        severe ? 'border-red-700' : 'border-amber-400'
-      }`}
+      className={`pointer-events-auto animate-rise rounded-2xl border-2 bg-white p-3 shadow-[0_14px_36px_-12px_rgb(15_23_42/0.38)] ${tone.border}`}
     >
       <div className="flex items-start gap-3">
-        <span className={`flex size-9 shrink-0 items-center justify-center rounded-full ${severe ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'}`}>
+        <span className={`flex size-9 shrink-0 items-center justify-center rounded-full ${tone.badge}`}>
           <Icon aria-hidden className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className={`font-bold ${severe ? 'text-red-900' : 'text-amber-950'}`}>
+          <p className={`font-bold ${tone.title}`}>
             {title}{' '}
             <span className="ml-1 rounded-full border border-slate-300 px-1.5 text-xs font-medium text-slate-700">{t('flood.simulated')}</span>
           </p>
           <p className="text-slate-800">{body}</p>
-          <Link
-            to={`/ops?flood=${alert.area.id}`}
-            viewTransition
-            onClick={() => dismiss(alert.key)}
-            className="mt-1 inline-flex min-h-9 items-center font-semibold text-primary-700 underline underline-offset-2 hover:text-primary-900"
-          >
-            {t('flood.showMap')}
-          </Link>
+          {canShow && (
+            <Link
+              to={`/ops?flood=${alert.area.id}`}
+              viewTransition
+              onClick={() => dismiss(alert.key)}
+              className="mt-1 inline-flex min-h-9 items-center font-semibold text-primary-700 underline underline-offset-2 hover:text-primary-900"
+            >
+              {t('flood.showMap')}
+            </Link>
+          )}
         </div>
         <button
           type="button"

@@ -16,6 +16,10 @@ export interface FloodAlert {
   key: string
   area: FloodArea
   at: number
+  /** 'worse': flooded or got worse. 'receding': was flooded or severe, now lower or gone. */
+  kind: 'worse' | 'receding'
+  /** For receding alerts: the level now, or null when the area has cleared. */
+  now: FloodLevel | null
 }
 
 interface FloodState {
@@ -33,7 +37,17 @@ export const useFloods = create<FloodState>((set) => ({
 }))
 
 /** Alert text, shared by the in-app alert and the system notification. */
-export function alertText(area: FloodArea, lang: 'en' | 'ms'): { title: string; body: string } {
+export function alertText({ area, kind, now }: FloodAlert, lang: 'en' | 'ms'): { title: string; body: string } {
+  if (kind === 'receding') {
+    // Never says "safe": still flooded means keep away, cleared means check before going back.
+    const stillDepth = now ? LEVEL_DEPTH[now] : null
+    return {
+      title: translate(lang, 'flood.titleReceding'),
+      body: stillDepth
+        ? translate(lang, 'flood.alertDropping', { area: area.name[lang], depth: translate(lang, depthLabel(stillDepth)) })
+        : translate(lang, 'flood.alertReceding', { area: area.name[lang] }),
+    }
+  }
   const depth = LEVEL_DEPTH[area.level]
   return {
     title: translate(lang, area.level === 'severe' ? 'flood.titleSevere' : 'flood.titleFlooded'),
@@ -45,10 +59,11 @@ export function alertText(area: FloodArea, lang: 'en' | 'ms'): { title: string; 
   }
 }
 
-async function systemNotify(area: FloodArea) {
+async function systemNotify(alert: FloodAlert) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return
-  const { title, body } = alertText(area, useSettings.getState().lang)
-  const options = { body, tag: `flood-${area.id}`, icon: '/icons/icon-192.png' }
+  const { title, body } = alertText(alert, useSettings.getState().lang)
+  // Same tag per area, so a receding notice replaces that area's flood notice.
+  const options = { body, tag: `flood-${alert.area.id}`, icon: '/icons/icon-192.png' }
   try {
     // Phones need the service worker to show it; in dev there is none, so fall back.
     const reg = await navigator.serviceWorker?.getRegistration()
@@ -62,7 +77,7 @@ async function systemNotify(area: FloodArea) {
 /** Keeps the flood feed fresh and raises alerts. Mount once. */
 export function useFloodWatch() {
   useEffect(() => {
-    let prev: Map<string, FloodLevel> | null = null
+    let prev: Map<string, FloodArea> | null = null
     let seq = 0
     let live = true
 
@@ -72,20 +87,32 @@ export function useFloodWatch() {
       // A newer refresh started while this one was loading.
       if (!live || mine !== seq) return
       // The first load only sets the baseline, so opening the app does not fire alerts.
-      const worse = prev
-        ? areas.filter((a) => a.level !== 'watch' && LEVEL_RANK[a.level] > LEVEL_RANK[prev!.get(a.id) ?? 'none'])
-        : []
-      prev = new Map(areas.map((a) => [a.id, a.level]))
-      const now = Date.now()
+      const at = Date.now()
+      const fresh: FloodAlert[] = []
+      if (prev) {
+        const current = new Map(areas.map((a) => [a.id, a]))
+        for (const a of areas) {
+          if (a.level !== 'watch' && LEVEL_RANK[a.level] > LEVEL_RANK[prev.get(a.id)?.level ?? 'none'])
+            fresh.push({ key: `${a.id}-${a.level}-${at}`, area: a, at, kind: 'worse', now: a.level })
+        }
+        // Receding: only for areas that were actually flooded, so "water rising" going away stays quiet.
+        for (const old of prev.values()) {
+          if (old.level === 'watch') continue
+          const nowArea = current.get(old.id)
+          const nowLevel = nowArea && nowArea.level !== 'watch' ? nowArea.level : null
+          if (LEVEL_RANK[nowLevel ?? 'none'] < LEVEL_RANK[old.level])
+            fresh.push({ key: `${old.id}-down-${nowLevel ?? 'clear'}-${at}`, area: nowArea ?? old, at, kind: 'receding', now: nowLevel })
+        }
+      }
+      prev = new Map(areas.map((a) => [a.id, a]))
+      // Severe and flooded news first, then receding; each area keeps only its newest alert.
+      fresh.sort((a, b) => Number(a.kind === 'receding') - Number(b.kind === 'receding'))
       useFloods.setState((s) => ({
         areas,
-        updatedAt: now,
-        alerts: [
-          ...worse.map((area) => ({ key: `${area.id}-${area.level}-${now}`, area, at: now })),
-          ...s.alerts.filter((a) => !worse.some((w) => w.id === a.area.id)),
-        ].slice(0, MAX_ALERTS),
+        updatedAt: at,
+        alerts: [...fresh, ...s.alerts.filter((a) => !fresh.some((f) => f.area.id === a.area.id))].slice(0, MAX_ALERTS),
       }))
-      worse.forEach(systemNotify)
+      fresh.forEach(systemNotify)
     }
 
     tick()
