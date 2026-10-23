@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudMoon, CloudRain, CloudRainWind, MapPin, Moon, Sun, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { useT } from '../i18n'
 import { isReturning, timeGreeting } from '../lib/greeting'
+import { placeLabel } from '../services/place'
 import { HEAVY_RAIN_3H_MM, weatherKind, weatherLabel, type Weather } from '../services/weather'
 import { useSettings } from '../store/settings'
 import { useWeather } from '../store/weather'
@@ -53,7 +54,7 @@ export function SkyHero() {
   const t = useT()
   const lang = useSettings((s) => s.lang)
   const name = useSettings((s) => s.name.trim())
-  const { weather, local, error } = useWeather()
+  const { weather, source, place, error } = useWeather()
 
   const now = new Date()
   const sky = skyFor(weather, now.getHours())
@@ -67,6 +68,9 @@ export function SkyHero() {
   const clock = (d: string | number) => new Date(d).toLocaleTimeString(locale, { hour: 'numeric' })
   const date = now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
   const welcome = isReturning ? (name ? t('greet.welcomeBackName', { name }) : t('greet.welcomeBack')) : name ? t('greet.welcomeName', { name }) : t('greet.welcome')
+  const placeName = place ? placeLabel(place) : ''
+  const where =
+    source === 'township' ? t('sky.township') : !placeName ? t('sky.near') : source === 'ip' ? t('sky.approx', { place: placeName }) : placeName
   const Icon = weather ? iconFor(weather.code, weather.isDay) : Cloud
 
   const outlook = !weather
@@ -161,9 +165,9 @@ export function SkyHero() {
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm opacity-85">
-        <span className="inline-flex items-center gap-1 whitespace-nowrap">
-          <MapPin aria-hidden className="size-4" />
-          {local ? t('sky.near') : t('sky.township')}
+        <span className="inline-flex min-w-0 items-center gap-1 font-semibold">
+          <MapPin aria-hidden className="size-4 shrink-0" />
+          <span className="truncate">{where}</span>
         </span>
         {weather && <span className="whitespace-nowrap">{t('weather.updated', { time: new Date(weather.fetchedAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' }) })}</span>}
         <span className="whitespace-nowrap">Open-Meteo</span>
