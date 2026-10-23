@@ -9,13 +9,15 @@ import { useSettings } from '../store/settings'
 export function FloodAlerts() {
   const t = useT()
   const lang = useSettings((s) => s.lang)
-  const { alerts, unread, markRead, clear } = useFloods()
+  const { alerts, seenAt, markRead, clear } = useFloods()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const panelId = useId()
   const { pathname, search } = useLocation()
 
-  const unreadSevere = alerts.slice(0, unread).some((a) => a.kind === 'worse' && a.area.level === 'severe')
+  const fresh = alerts.filter((a) => a.at > seenAt)
+  const unread = fresh.length
+  const unreadSevere = fresh.some((a) => a.kind === 'worse' && a.area.level === 'severe')
   const newest = alerts[0]
   const announce = newest ? Object.values(alertText(newest, lang)).join('. ') : ''
 

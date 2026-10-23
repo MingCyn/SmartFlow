@@ -101,11 +101,14 @@ export default function OpsPage() {
   const pannedFor = useRef<string | null>(null)
   useEffect(() => {
     if (!floodParam || pannedFor.current === floodKey) return
+    // A zone is always on the map, even after its water has gone down and it left the flood feed.
+    const zone = cells.data?.find((c) => c.id === floodParam)
     const area = floodAreas.find((a) => a.id === floodParam)
-    if (!area) return
+    const target: LatLng | null = zone ? [zone.center[0], zone.center[1]] : area ? [area.lat, area.lng] : null
+    if (!target) return
     pannedFor.current = floodKey
-    if (cells.data?.some((c) => c.id === area.id)) setSelected(area.id)
-    setFocus([area.lat, area.lng])
+    setSelected(zone ? zone.id : null)
+    setFocus(target)
   }, [floodParam, floodKey, floodAreas, cells.data])
 
   function selectCell(rc: RankedCell) {

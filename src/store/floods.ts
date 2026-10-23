@@ -26,10 +26,10 @@ export interface FloodAlert {
 interface FloodState {
   areas: FloodArea[]
   updatedAt: number | null
-  /** Newest first. Shown in the header bell. */
+  /** Newest first, one per area (its latest news). Shown in the header bell. */
   alerts: FloodAlert[]
-  /** Alerts that arrived since the bell was last opened. */
-  unread: number
+  /** When the bell list was last opened; alerts after this count as new. */
+  seenAt: number
   markRead: () => void
   clear: () => void
 }
@@ -38,9 +38,9 @@ export const useFloods = create<FloodState>((set) => ({
   areas: [],
   updatedAt: null,
   alerts: [],
-  unread: 0,
-  markRead: () => set({ unread: 0 }),
-  clear: () => set({ alerts: [], unread: 0 }),
+  seenAt: 0,
+  markRead: () => set({ seenAt: Date.now() }),
+  clear: () => set({ alerts: [], seenAt: Date.now() }),
 }))
 
 /** Alert text, shared by the in-app alert and the system notification. */
@@ -112,13 +112,13 @@ export function useFloodWatch() {
         }
       }
       prev = new Map(areas.map((a) => [a.id, a]))
-      // Severe and flooded news first, then receding.
+      // Severe and flooded news first, then receding. A new alert replaces that area's older one,
+      // so dragging the storm slider through several levels does not pile up stale alerts.
       fresh.sort((a, b) => Number(a.kind === 'receding') - Number(b.kind === 'receding'))
       useFloods.setState((s) => ({
         areas,
         updatedAt: at,
-        alerts: [...fresh, ...s.alerts].slice(0, MAX_ALERTS),
-        unread: Math.min(MAX_ALERTS, s.unread + fresh.length),
+        alerts: [...fresh, ...s.alerts.filter((a) => !fresh.some((f) => f.area.id === a.area.id))].slice(0, MAX_ALERTS),
       }))
       fresh.forEach(systemNotify)
     }
