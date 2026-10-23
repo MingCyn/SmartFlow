@@ -1,5 +1,5 @@
 // Live flood feed and alerts. One watcher (mounted in AppShell) refreshes the simulated
-// flood areas and raises an alert whenever an area floods or gets worse.
+// flood areas and raises an alert whenever an area floods, gets worse or the water goes down.
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import { translate } from '../i18n'
@@ -10,7 +10,8 @@ import { useOps } from './ops'
 import { useSettings } from './settings'
 
 const REFRESH_MS = 15_000
-const MAX_ALERTS = 3
+/** How many past alerts the header list keeps. */
+const MAX_ALERTS = 20
 
 export interface FloodAlert {
   key: string
@@ -25,15 +26,21 @@ export interface FloodAlert {
 interface FloodState {
   areas: FloodArea[]
   updatedAt: number | null
+  /** Newest first. Shown in the header bell. */
   alerts: FloodAlert[]
-  dismiss: (key: string) => void
+  /** Alerts that arrived since the bell was last opened. */
+  unread: number
+  markRead: () => void
+  clear: () => void
 }
 
 export const useFloods = create<FloodState>((set) => ({
   areas: [],
   updatedAt: null,
   alerts: [],
-  dismiss: (key) => set((s) => ({ alerts: s.alerts.filter((a) => a.key !== key) })),
+  unread: 0,
+  markRead: () => set({ unread: 0 }),
+  clear: () => set({ alerts: [], unread: 0 }),
 }))
 
 /** Alert text, shared by the in-app alert and the system notification. */
@@ -105,12 +112,13 @@ export function useFloodWatch() {
         }
       }
       prev = new Map(areas.map((a) => [a.id, a]))
-      // Severe and flooded news first, then receding; each area keeps only its newest alert.
+      // Severe and flooded news first, then receding.
       fresh.sort((a, b) => Number(a.kind === 'receding') - Number(b.kind === 'receding'))
       useFloods.setState((s) => ({
         areas,
         updatedAt: at,
-        alerts: [...fresh, ...s.alerts.filter((a) => !fresh.some((f) => f.area.id === a.area.id))].slice(0, MAX_ALERTS),
+        alerts: [...fresh, ...s.alerts].slice(0, MAX_ALERTS),
+        unread: Math.min(MAX_ALERTS, s.unread + fresh.length),
       }))
       fresh.forEach(systemNotify)
     }

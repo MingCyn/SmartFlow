@@ -46,7 +46,7 @@ The live camera and GPS need a secure origin: `localhost` works, and so does HTT
 | 0:00 to 0:30 | Report | The problem: residents learn about street flooding too late, and operators get scattered calls. SmartFlow turns resident photos and drain sensors into advice and a ranked work list |
 | 0:30 to 1:30 | Report | Take or choose a flood photo. The AI suggests the depth (labelled as a suggestion). The pin follows GPS, or tap the map. Send, and note the report ID. Under a minute |
 | 1:30 to 2:00 | My reports | The report moves Submitted → Unverified → Likely → Verified, shown as text and colour |
-| 2:00 to 3:00 | Operations | Ranked zones with sensor sparklines; flooded areas drawn on the map. Drag the storm slider to the top: alerts pop up live ("Severe flood alert ... Simulated"), Zone B1 climbs with no reports yet. Tap **Show on map** to pan to it. Press **Add a flood near me** for one more live alert |
+| 2:00 to 3:00 | Operations | Ranked zones with sensor sparklines; flooded areas drawn on the map. Drag the storm slider to the top: the bell in the header shows a red count of new alerts, and Zone B1 climbs with no reports yet. Open the bell ("Severe flood alert ... Simulated") and tap **Show on map** to pan to it. Drag the slider back down: green "Water receding" alerts follow. Press **Add a flood near me** for one more live alert |
 | 3:00 to 3:45 | Chat | Tap **Which areas are flooded?**: Titis lists the same areas as the map, nearest first, with distance and depth. Then tap **I need help now**: the fixed safety lines, never AI text |
 | 3:45 to 4:15 | Advice, Settings | Roads to avoid, nearest safe point, go-bag checklist. Switch to Bahasa Malaysia; everything, including alerts, follows |
 | 4:15 to 5:00 | Any | Real vs simulated (table above). Feasibility: a thin service layer (`src/services/client.ts`) swaps to a real API and sensor feed; zones are plain data, so another township is a new data file |
@@ -63,7 +63,7 @@ The live camera and GPS need a secure origin: `localhost` works, and so does HTT
 | `src/constants/lifeCritical.ts` | Hard-coded, frozen life-critical lines and advisory banner. The AI layer cannot change them |
 | `src/lib/scoring.ts` | Pure storm simulation and zone ranking |
 | `src/services/floods.ts`, `src/store/floods.ts` | Simulated flooded areas (zones from the ranking, plus fake spots around the user). One watcher in `AppShell` refreshes every 15 seconds, and at once when the storm, GPS or added floods change, and raises alerts when an area floods or gets worse |
-| `src/components/FloodAlerts.tsx` | The in-app flood alerts, plus a system notification when allowed |
+| `src/components/FloodAlerts.tsx` | The header bell: count of new alerts and a list of recent flood and receding alerts with **Show on map**. A system notification also fires when allowed |
 | `src/store/` | Zustand stores: settings (layout, language, motion) and ops (storm, dispatch), persisted to localStorage |
 | `src/components/AppShell.tsx` | The single shell for both layouts. Nav order: Operations, Advice, Report (round camera button), My reports, Chat. Settings is the gear in the header |
 | `src/components/mascot/` | Titis, the chat mascot: 16 expressions and 15 moves as plain SVG and math (`poses.ts`), a frame loop with pointer-following gaze, blinking, press squish and napping (`engine.ts`) |

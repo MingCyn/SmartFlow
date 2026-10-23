@@ -97,15 +97,16 @@ export default function OpsPage() {
 
   // "Show on map" from a flood alert: pan once to that area, even if it loads a moment later.
   const floodParam = params.get('flood')
+  const floodKey = params.toString()
   const pannedFor = useRef<string | null>(null)
   useEffect(() => {
-    if (!floodParam || pannedFor.current === floodParam) return
+    if (!floodParam || pannedFor.current === floodKey) return
     const area = floodAreas.find((a) => a.id === floodParam)
     if (!area) return
-    pannedFor.current = floodParam
+    pannedFor.current = floodKey
     if (cells.data?.some((c) => c.id === area.id)) setSelected(area.id)
     setFocus([area.lat, area.lng])
-  }, [floodParam, floodAreas, cells.data])
+  }, [floodParam, floodKey, floodAreas, cells.data])
 
   function selectCell(rc: RankedCell) {
     setSelected(rc.cell.id)

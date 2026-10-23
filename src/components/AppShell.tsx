@@ -206,13 +206,15 @@ export function AppShell() {
               </ul>
             </nav>
 
+            <FloodAlerts />
+
             <NavLink
               to="/settings"
               viewTransition
               aria-label={t('nav.settings')}
               title={t('nav.settings')}
               className={({ isActive }) =>
-                `group flex size-11 items-center justify-center rounded-full transition-colors duration-200 mobile:ml-auto ${
+                `group flex size-11 items-center justify-center rounded-full transition-colors duration-200 ${
                   isActive ? 'bg-primary-50 text-primary-700' : 'text-slate-700 hover:bg-slate-100'
                 }`
               }
@@ -221,8 +223,6 @@ export function AppShell() {
             </NavLink>
           </div>
         </header>
-
-        <FloodAlerts />
 
         <main id="main" tabIndex={-1} className="flex-1 px-4 py-5 outline-none mobile:pb-36 browser:px-6 browser:py-6">
           <Outlet />
